@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "astrotweaks:blocks/deepslate_top",
+    "up": "astrotweaks:blocks/deepslate_top",
+    "north": "astrotweaks:blocks/deepslate",
+    "east": "astrotweaks:blocks/deepslate",
+    "south": "astrotweaks:blocks/deepslate",
+    "west": "astrotweaks:blocks/deepslate",
+    "particle": "astrotweaks:blocks/deepslate_top"
+  }
+}

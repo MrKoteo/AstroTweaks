@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "astrotweaks:blocks/compressed_redstone_block",
+    "particle": "astrotweaks:blocks/compressed_redstone_block"
+  }
+}

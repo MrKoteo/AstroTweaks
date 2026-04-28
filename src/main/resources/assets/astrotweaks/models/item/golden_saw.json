@@ -1,0 +1,6 @@
+{
+  "parent": "item/handheld",
+  "textures": {
+    "layer0": "astrotweaks:items/saw_gold"
+  }
+}

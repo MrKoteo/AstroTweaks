@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "normal": {
+      "model": "astrotweaks:fexplosive"
+    },
+    "facing=north": {
+      "model": "astrotweaks:fexplosive"
+    },
+    "facing=east": {
+      "model": "astrotweaks:fexplosive",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "astrotweaks:fexplosive",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "astrotweaks:fexplosive",
+      "y": 270
+    }
+  }
+}

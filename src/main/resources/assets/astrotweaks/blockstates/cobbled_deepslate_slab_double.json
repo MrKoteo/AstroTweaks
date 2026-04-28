@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "variant=default": {
+      "model": "astrotweaks:cobbled_deepslate_slab_double"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "parent": "astrotweaks:custom/metal_frame",
+  "textures": {
+    "all": "astrotweaks:blocks/metal_frame_bw",
+    "particle": "astrotweaks:blocks/metal_frame_bw",
+    "0": "astrotweaks:blocks/metal_frame_bw",
+    "missing": "astrotweaks:blocks/metal_frame_bw"
+  }
+}

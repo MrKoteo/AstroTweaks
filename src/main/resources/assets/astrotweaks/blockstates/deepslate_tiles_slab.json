@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "half=bottom,variant=default": {
+      "model": "astrotweaks:deepslate_tiles_slab"
+    },
+    "half=top,variant=default": {
+      "model": "astrotweaks:deepslate_tiles_slab_top"
+    }
+  }
+}

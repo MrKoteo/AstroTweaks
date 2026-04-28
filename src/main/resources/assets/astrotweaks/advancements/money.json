@@ -1,0 +1,23 @@
+{
+  "display": {
+    "icon": {
+      "item": "astrotweaks:money_table"
+    },
+    "title": {
+      "translate": "advancements.money.title"
+    },
+    "description": {
+      "translate": "advancements.money.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "money": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "parent": "astrotweaks:ages_adv"
+}

@@ -7,18 +7,27 @@ buildscript {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
     }
 }
+
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'eclipse'
 
+
 version = '1.0'
-group = 'astrotweaks'
-archivesBaseName = 'astrotweaks'
+group = 'com.yourname.modid'
+archivesBaseName = 'modid'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(8)
 
 minecraft {
     mappings channel: 'snapshot', version: '20171003-1.12'
 
+    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+
+    //version = "1.12.2-14.23.5.2860"
+    //runDir = "run"
+    //mappings = "stable_39"
+
+    
     runs {
         client {
             workingDirectory project.file('run')
@@ -58,11 +67,46 @@ dependencies {
     minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2860'
 
     compileOnly "mezz.jei:jei_1.12.2:4.16.1.302"
+
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
+    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
+//tasks.withType(Jar).configureEach {
+	//archiveBaseName.set(archivesBaseName)
+	//archiveVersion.set(version)
+
+    // deletes timestamps of files inside the archive
+    //preserveFileTimestamps = false
+//}
+
+
+jar {
+    manifest {
+        attributes(
+            'FMLCorePlugin': 'astrotweaks.CoreModLoader',
+            'FMLCorePluginContainsFMLMod': 'true',
+            'ForceLoadAsMod': 'true',
+            'TweakOrder': '0',
+            //'Maven-Artifact': "${project.group}:${project.archivesBaseName}:${project.version}",
+            //'Timestamp': System.currentTimeMillis(),
+            'Specification-Title': 'AstroTweaks',
+            'Specification-Vendor': 'AstroTweaks',
+            'Specification-Version': '1',
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'AstroTweaks'
+            //'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        )
+    }
+    
+    // If have resources, make sure they are copied
+    from sourceSets.main.output.classesDirs
+    from sourceSets.main.output.resourcesDir
+}
+
+
 
 
 

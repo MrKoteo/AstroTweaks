@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "minecraft:stonebrick"
+    }],
+  "result": {
+    "item": "astrotweaks:stone_brick",
+    "count": 4
+  },
+    "group": "stone_brick"
+}

@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "normal": {
+      "model": "astrotweaks:ground_rock_1"
+    },
+    "facing=north": {
+      "model": "astrotweaks:ground_rock_1"
+    },
+    "facing=east": {
+      "model": "astrotweaks:ground_rock_1",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "astrotweaks:ground_rock_1",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "astrotweaks:ground_rock_1",
+      "y": 270
+    }
+  }
+}

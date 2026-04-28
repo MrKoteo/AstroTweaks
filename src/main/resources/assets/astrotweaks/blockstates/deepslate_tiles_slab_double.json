@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "variant=default": {
+      "model": "astrotweaks:deepslate_tiles_slab_double"
+    }
+  }
+}

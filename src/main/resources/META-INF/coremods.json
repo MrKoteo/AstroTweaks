@@ -1,0 +1,8 @@
+{
+  "AstroTweaks CoreMod": {
+    "jar": "AstroTweaks.jar",
+    "languages": ["java"],
+    "tweakClass": "astrotweaks.CoreModLoader",
+    "dependsOn": []
+  }
+}

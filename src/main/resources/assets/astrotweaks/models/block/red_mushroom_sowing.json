@@ -1,0 +1,7 @@
+{
+  "parent": "block/cross",
+  "textures": {
+    "cross": "astrotweaks:blocks/r_msh_1",
+    "particle": "astrotweaks:blocks/r_msh_1"
+  }
+}

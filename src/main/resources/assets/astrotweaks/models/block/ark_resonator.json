@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "astrotweaks:blocks/dimark_t",
+    "up": "astrotweaks:blocks/dimark_t",
+    "north": "astrotweaks:blocks/dimark_r",
+    "east": "astrotweaks:blocks/dimark_r",
+    "south": "astrotweaks:blocks/dimark_r",
+    "west": "astrotweaks:blocks/dimark_r",
+    "particle": "astrotweaks:blocks/dimark_t"
+  }
+}

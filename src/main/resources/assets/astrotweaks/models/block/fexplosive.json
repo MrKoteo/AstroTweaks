@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "astrotweaks:blocks/bottom_fexp",
+    "up": "astrotweaks:blocks/bottom_fexp",
+    "north": "astrotweaks:blocks/fexp",
+    "east": "astrotweaks:blocks/side_fexp",
+    "south": "astrotweaks:blocks/fexp",
+    "west": "astrotweaks:blocks/side_fexp",
+    "particle": "astrotweaks:blocks/bottom_fexp"
+  }
+}

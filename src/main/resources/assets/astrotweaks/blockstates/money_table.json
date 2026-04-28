@@ -1,0 +1,22 @@
+{
+  "variants": {
+    "normal": {
+      "model": "astrotweaks:money_table"
+    },
+    "facing=north": {
+      "model": "astrotweaks:money_table"
+    },
+    "facing=east": {
+      "model": "astrotweaks:money_table",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "astrotweaks:money_table",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "astrotweaks:money_table",
+      "y": 270
+    }
+  }
+}

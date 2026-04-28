@@ -1,0 +1,23 @@
+{
+  "display": {
+    "icon": {
+      "item": "astrotweaks:philistine_badge"
+    },
+    "title": {
+      "translate": "advancements.age_2.title"
+    },
+    "description": {
+      "translate": "advancements.age_2.descr"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "age_2": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "parent": "astrotweaks:age_1"
+}

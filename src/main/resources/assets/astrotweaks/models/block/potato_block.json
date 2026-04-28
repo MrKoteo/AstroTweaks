@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "astrotweaks:blocks/potato_block",
+    "particle": "astrotweaks:blocks/potato_block"
+  }
+}

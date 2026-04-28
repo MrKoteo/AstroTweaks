@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "astrotweaks:blocks/comressed_diamond_block",
+    "particle": "astrotweaks:blocks/comressed_diamond_block"
+  }
+}

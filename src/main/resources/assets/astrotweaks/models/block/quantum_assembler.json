@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "astrotweaks:blocks/qm_top",
+    "up": "astrotweaks:blocks/qm_top",
+    "north": "astrotweaks:blocks/qm_front",
+    "east": "astrotweaks:blocks/qm_left",
+    "south": "astrotweaks:blocks/qm_back",
+    "west": "astrotweaks:blocks/qm_right",
+    "particle": "astrotweaks:blocks/qm_top"
+  }
+}

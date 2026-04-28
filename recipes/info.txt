@@ -1,5 +1,0 @@
-there will be CraftTweaker2 scripts with a possible option for integrating my mod into the modpack environment.
-
-/////
-
-тут будут скрипты CraftTweaker2 с возможным вариантом интеграции моего мода в среде модпака.

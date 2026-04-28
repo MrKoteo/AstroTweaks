@@ -1,0 +1,8 @@
+{
+  "parent": "astrotweaks:custom/bushumodel",
+  "textures": {
+    "all": "astrotweaks:blocks/bush_4",
+    "particle": "astrotweaks:blocks/bush_4",
+    "Bush": "astrotweaks:blocks/bush_4"
+  }
+}

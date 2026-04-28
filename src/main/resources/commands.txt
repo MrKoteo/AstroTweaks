@@ -1,0 +1,30 @@
+# gives XPBox with 10 XP levels
+/give @s astrotweaks:xp_box 1 0 {xp:10,levels:True}
+
+# changes dimension for player
+/dim <dimID> <playerName|@s> [x y z]|<playerName>
+
+/dim -1
+/dim -1 @s 0 90 0
+/dim -1 player1234
+/dim -1 @s friend
+
+# changes your game mode
+/gm 0 | 1 | 2 | 3
+/gm s | c | a | se/x
+
+# summons multiple entities
+/rsummon <entity_id> [x y z] [count] {nbt}
+
+/rsummon ocelot
+/rsummon ocelot 5
+/rsummon creeper 3 {powered:1}
+/rsummon bat ~ ~3 ~ 13
+
+# show/hide  scoredoard with Deaths Count
+/deaths
+
+# print current variables values (from config)
+/atdebug
+
+

@@ -1,0 +1,8 @@
+{
+  "parent": "block/half_slab",
+  "textures": {
+    "bottom": "astrotweaks:blocks/cobbled_deepslate",
+    "top": "astrotweaks:blocks/cobbled_deepslate",
+    "side": "astrotweaks:blocks/cobbled_deepslate"
+  }
+}
