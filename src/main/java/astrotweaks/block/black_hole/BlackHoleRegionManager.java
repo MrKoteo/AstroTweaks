@@ -36,8 +36,7 @@ public class BlackHoleRegionManager {
     private final BlackHoleTileEntity te;
     private final Map<Long, BlackHoleRegion> allRegions = new HashMap<>();
     private final List<BlackHoleRegion> active = new ArrayList<>();
-    private final PriorityQueue<BlackHoleRegion> waiting =
-            new PriorityQueue<>(Comparator.comparingDouble(r -> r.wakeMass));
+    private final PriorityQueue<BlackHoleRegion> waiting = new PriorityQueue<>(Comparator.comparingDouble(r -> r.wakeMass));
 
     private double massAtLastWake = 0;
     private boolean seeded = false;
@@ -90,7 +89,6 @@ public class BlackHoleRegionManager {
         waiting.add(r);
         r.inWaiting = true;
     }
-
     private void removeWaiting(BlackHoleRegion r) {
         if (r.inWaiting) {
             waiting.remove(r);
@@ -648,7 +646,6 @@ public class BlackHoleRegionManager {
         if (bdistSq <= horizonPlusSq) return true;
         return BlackHoleUtils.getAccelerationSq(curMass, bdistSq) >= checkHardness;
     }
-
     private void eat(World world, BlockPos bp, boolean liquid) {
         if (liquid) world.setBlockState(bp, Blocks.AIR.getDefaultState(), 2);
         else world.setBlockToAir(bp);
@@ -707,21 +704,18 @@ public class BlackHoleRegionManager {
         if (b instanceof BlockVine) return true;
         return false;
     }
-
     private static double dist(BlockPos bp, double cx, double cy, double cz) {
         double dx = bp.getX() + 0.5 - cx;
         double dy = bp.getY() + 0.5 - cy;
         double dz = bp.getZ() + 0.5 - cz;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
-
     private static double dist(int bx, int by, int bz, double cx, double cy, double cz) {
         double dx = bx + 0.5 - cx;
         double dy = by + 0.5 - cy;
         double dz = bz + 0.5 - cz;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
-
     private static long packKey(int ox, int oy, int oz) {
         // SIZE==8 → division = arithmetic shift, floorDiv == >>3 for power-of-two
         int rx = ox >> 3;

@@ -146,6 +146,7 @@ public class AstrotweaksMod {
 		MinecraftForge.EVENT_BUS.register(astrotweaks.block.mirage.MirageRemovalQueue.class);
 
 		MinecraftForge.EVENT_BUS.register(new astrotweaks.item.TotemOfGod.TotemOfGodEvents());
+		MinecraftForge.EVENT_BUS.register(new astrotweaks.item.SpatialAnchor.SpatialAnchorEvents());
 
 
 

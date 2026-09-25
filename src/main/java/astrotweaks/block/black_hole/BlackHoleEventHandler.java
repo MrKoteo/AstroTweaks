@@ -89,6 +89,14 @@ public class BlackHoleEventHandler {
         List<BlackHoleTileEntity> holes = null;
         for (BlackHoleTileEntity bh : active) {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
+            // Stale-экземпляр после выгрузки чанка: позицию уже занял другой TE.
+            // Чистим только при доказанной замене (другой non-null TE), отсутствие
+            // записи (null) — переходное состояние загрузки, не трогаем.
+            TileEntity current = world.getTileEntity(bh.getPos());
+            if (current != null && current != bh) {
+                active.remove(bh);
+                continue;
+            }
             if (holes == null) holes = new ArrayList<>();
             holes.add(bh);
         }
@@ -112,6 +120,10 @@ public class BlackHoleEventHandler {
                 double dy = (b.getPos().getY() + 0.5) - ay;
                 double dz = (b.getPos().getZ() + 0.5) - az;
                 double distSq = dx * dx + dy * dy + dz * dz;
+                // Одна и та же клетка = одна и та же дыра: дубликат регистрации
+                // (stale после выгрузки) никогда не образует легитимную пару.
+                // Без этого tug на dist ~ 0 даёт смертельный дренаж за секунды.
+                if (distSq < 1e-6) continue;
                 if (distSq > rangeA * rangeA) continue; // outside A's influence
                 double grav = BlackHoleUtils.getAccelerationSq(massA, distSq);
                 double take = BlackHoleUtils.TUG_RATE * massA * (1.0D + grav);

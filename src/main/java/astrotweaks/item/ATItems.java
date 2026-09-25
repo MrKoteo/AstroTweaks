@@ -375,6 +375,7 @@ ItemUnstableVoidCore.UNSTABLE_VOID_CORE,
 ItemUDestroyerItem.DESTROYER_ITEM,
 ItemVoidAntimatter.VOID_ANTIMATTER,
 TotemOfGod.TOTEM_OF_GOD,
+astrotweaks.item.SpatialAnchor.SpatialAnchor.SPATIAL_ANCHOR,
 
 
     };

@@ -54,6 +54,10 @@ public final class BlackHoleWorldRenderer {
             for (BlackHoleTileEntity bh : active) {
                 if (bh.isInvalid() || bh.getWorld() != w) continue;
                 BlockPos p = bh.getPos();
+                // Stale-экземпляр после выгрузки чанка: позицию занял другой TE —
+                // не рисуем призрака. Null (переходное состояние) — рисуем как раньше.
+                TileEntity current = w.getTileEntity(p);
+                if (current != null && current != bh) continue;
                 // Только в прогруженных чанках для этого игрока
                 if (!w.isBlockLoaded(p)) continue;
                 // Доп. проверка по дистанции прогрузки — isBlockLoaded может держать чанк чуть дольше

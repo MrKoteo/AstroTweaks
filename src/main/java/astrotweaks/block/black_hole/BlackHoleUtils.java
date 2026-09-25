@@ -213,10 +213,10 @@ public final class BlackHoleUtils {
     }
 
     public static double getHorizonRadius(double mass) {
-        if (mass <= 0) return 0.02D;
+        if (mass <= 0) return 0.01D;
         if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastHorizonMassBits)) return lastHorizonR;
         double r = H_SCALE * Math.pow(mass, H_EXP);
-        if (r < 0.02D) r = 0.02D;
+        if (r < 0.01D) r = 0.01D;
         if (r > 100D) r = 100D;
         lastHorizonMassBits = mass;
         lastHorizonR = r;

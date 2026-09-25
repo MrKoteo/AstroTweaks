@@ -22,7 +22,11 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     public static final String TAG_MASS = "mass";
 
-    /** Глобальный реестр активных BH — O(число BH) вместо O(все TE) в ивентах. Strong set, чтобы BH не пропадала при выгрузке чанка (WeakHashMap собиралась GC). */
+    /** Глобальный реестр активных BH — O(число BH) вместо O(все TE) в ивентах.
+     * Strong set, но время жизни записей привязано к чанку: validate/onLoad
+     * добавляют, invalidate/onChunkUnload удаляют. Без удаления на выгрузке
+     * stale-экземпляры накапливались бы и участвовали в BH-vs-BH tug как
+     * фантомные вторые дыры в той же точке (dist ~ 0 -> смертельный дренаж). */
     private static final java.util.Set<BlackHoleTileEntity> ACTIVE_HOLES =
             java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
 
@@ -116,6 +120,16 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         ACTIVE_HOLES.add(this);
     }
 
+    /**
+     * Forge зовёт onLoad и при установке блока, и при загрузке чанка с диска
+     * (validate на дисковом пути тоже вызывается, но дублирование безопасно —
+     * set семантика). Страховка на случай путей регистрации без validate.
+     */
+    @Override
+    public void onLoad() {
+        ACTIVE_HOLES.add(this);
+    }
+
     @Override
     public void invalidate() {
         ACTIVE_HOLES.remove(this);
@@ -124,6 +138,10 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
     @Override
     public void onChunkUnload() {
+        // Выгрузка чанка НЕ инвалидирует TE в ванили — без этого stale-экземпляр
+        // навсегда оставался бы в ACTIVE_HOLES (strong set) и после перезагрузки
+        // чанка воевал бы со свежим экземпляром в BH-vs-BH tug на дистанции ~0.
+        ACTIVE_HOLES.remove(this);
         // Форсим сохранение последних пассивных изменений перед выгрузкой, чтобы не потерять массу
         if (!world.isRemote && Double.doubleToLongBits(mass) != Double.doubleToLongBits(lastPersistedMass)) {
             markDirty();
@@ -349,6 +367,24 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
             if (dist > gravRange) continue;
             if (accel < BlackHoleUtils.MIN_ACCEL) continue;
+
+            // --- SpatialAnchor: блокировка гравитации за FE (accel*100) ---
+            if (e instanceof EntityPlayer) {
+                EntityPlayer p = (EntityPlayer) e;
+                try {
+                    //if (astrotweaks.item.SpatialAnchor.SpatialAnchor.hasFlightAnchor(p)) {
+                        // В абсолютном полёте гравитация уже покрыта 100 FE/tick — просто игнорим
+                        //continue;
+                    //}
+                    if (astrotweaks.item.SpatialAnchor.SpatialAnchor.hasActiveAnchor(p)) {
+                        long cost = (long) Math.ceil(accel * 100.0D);
+                        if (cost < 1L) cost = 1L;
+                        if (astrotweaks.item.SpatialAnchor.SpatialAnchor.tryConsume(p, cost)) {
+                            continue;
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
 
             // --- Motion ---
             double maxAccel = Math.min(accel, dist * 0.45) * stride;

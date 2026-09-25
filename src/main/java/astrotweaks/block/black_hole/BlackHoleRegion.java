@@ -111,7 +111,6 @@ public class BlackHoleRegion {
         if (idx >= 0) isDeferred[idx] = false;
         deferred[i] = -1;
     }
-
     public void compactDeferred() {
         int w = 0;
         for (int i = 0; i < deferredCount; i++) {
@@ -120,7 +119,6 @@ public class BlackHoleRegion {
         deferredCount = w;
         recheckCursor = 0;
     }
-
     /** Free the sorted order once the initial scan is complete. */
     public void freeSortedOrder() {
         sortedOrder = null;
