@@ -55,6 +55,13 @@ public final class BlackHoleUtils {
     public static final double H_SCALE = 0.022D;
     public static final double H_EXP = 0.34D;
 
+    // Near-horizon boost: Rb(m) = m^{0.30103}/16 = 2*(m/1e5)^{0.30103}
+    // 1e5->2, 1e6->4, 1e7->8, 1e8->16, 1e9->32 (continuous)
+    public static final double BOOST_EXP = 0.30103D;
+    public static final double BOOST_INV16 = 1.0D / 16.0D;
+    public static final double BOOST_MAX = 9.0D; // 10x at horizon (1+9)
+    public static final double BOOST_POW = 3.0D; // cubic: flat far, sharp near horizon
+
     /** Мемоизация для частых pow — single-slot, single-thread (майн single thread) */
     private static double lastHorizonMassBits = Double.NaN;
     private static double lastHorizonR = 0;
@@ -62,10 +69,12 @@ public final class BlackHoleUtils {
     private static double lastHaloThickness = 0;
     private static double lastEvapMass = Double.NaN;
     private static double lastEvapLoss = 0;
+    private static double lastBoostMassBits = Double.NaN;
+    private static double lastBoostR = 0;
 
     /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
     public static double getHaloThickness(double horizon) {
-        if (horizon <= 0) return 0.2D;
+        if (horizon <= 0) return 0.16D;
         if (Double.doubleToLongBits(horizon) == Double.doubleToLongBits(lastHaloHorizon)) return lastHaloThickness;
         double h = 0.2D * Math.pow(horizon, 0.60206D);
         if (h < 0.12D) h = 0.12D;
@@ -87,7 +96,7 @@ public final class BlackHoleUtils {
     }
 
     /** Default mass for newly placed black hole */
-    public static final double DEFAULT_MASS = 5000.0D;
+    public static final double DEFAULT_MASS = 20000.0D;
 
     /** Hard floor for mass (evaporation and drains never go below this). */
     public static final double MIN_MASS = 0.5D;
@@ -104,8 +113,8 @@ public final class BlackHoleUtils {
      * Halves every decade: 1e4 -&gt; 32, 1e5 -&gt; 16, 1e6 -&gt; 8, ...
      * loss(m) = EVAP_BASE / m^EVAP_EXP, EVAP_EXP = log10(2).
      */
-    public static final double EVAP_BASE = 512.0D;
-    public static final double EVAP_EXP = 0.30103D / 2;
+    public static final double EVAP_BASE = 256.0D;
+    public static final double EVAP_EXP = 0.30103D;
 
     public static double getEvaporationPerTick(double mass) {
         if (mass < MIN_MASS)  return MIN_MASS; // floor or NaN: nothing to evaporate
@@ -134,10 +143,10 @@ public final class BlackHoleUtils {
     }
 
     /** Mass delta per absorption */
-    public static final double MASS_PER_ITEM = 1.0D;
-    public static final double MASS_PER_ENTITY = 15.0D;
+    public static final double MASS_PER_ITEM = 1.5D;
+    public static final double MASS_PER_ENTITY = 20.0D;
     public static final double MASS_PER_XP = 0.5D;
-    public static final double MASS_PER_PLAYER = 25.0D;
+    public static final double MASS_PER_PLAYER = 50.0D;
     /** Mass gained per liquid block eaten. Cheap — liquids have no structural cost. */
     public static final double MASS_PER_LIQUID = 0.5D;
 
@@ -261,6 +270,71 @@ public final class BlackHoleUtils {
     public static double getAccelerationSq(double mass, double distSq) {
         if (distSq < 0.01D) distSq = 0.01D;
         return G * mass / distSq;
+    }
+
+    // =================================================================
+    // Near-horizon gravity boost — sharp cubic ramp inside Ro=horizon+Rb
+    // =================================================================
+
+    /** Boost radius Rb(m) — distance from horizon where extra pull starts. */
+    public static double getBoostRadius(double mass) {
+        if (!(mass > 0)) return 0;
+        if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastBoostMassBits)) return lastBoostR;
+        double r = Math.pow(mass, BOOST_EXP) * BOOST_INV16;
+        if (r < 0) r = 0;
+        if (r > MAX_GRAVITY_RANGE) r = MAX_GRAVITY_RANGE;
+        lastBoostMassBits = mass;
+        lastBoostR = r;
+        return r;
+    }
+
+    /** Outer edge of boosted annulus. */
+    public static double getBoostOuterRadius(double mass) {
+        return getHorizonRadius(mass) + getBoostRadius(mass);
+    }
+
+    /**
+     * Multiplicative boost factor at distance dist (requires horizon and Rb).
+     * 1.0 outside Ro, (1+BOOST_MAX) at horizon, cubic falloff.
+     * Hot path: 1 branch + 3 mul for t^3.
+     */
+    public static double getBoostFactor(double dist, double horizon, double boostRadius) {
+        if (boostRadius <= 0) return 1.0D;
+        double outer = horizon + boostRadius;
+        if (dist <= horizon) return 1.0D + BOOST_MAX; // inside horizon already absorbed, but for completeness
+        if (dist >= outer) return 1.0D;
+        double t = (outer - dist) / boostRadius; // 0..1
+        double t2 = t * t;
+        double t3 = t2 * t; // cubic
+        return 1.0D + BOOST_MAX * t3;
+    }
+
+    /** Boosted acceleration using precomputed dist (entity path — already has sqrt). */
+    public static double getAccelerationBoosted(double mass, double dist, double horizon, double boostRadius) {
+        double accel = getAcceleration(mass, dist);
+        if (boostRadius <= 0) return accel;
+        double outer = horizon + boostRadius;
+        if (dist <= horizon || dist >= outer) return accel;
+        double t = (outer - dist) / boostRadius;
+        double t3 = t * t * t;
+        return accel * (1.0D + BOOST_MAX * t3);
+    }
+
+    /**
+     * Boosted acceleration using distSq (block path — avoids extra sqrt outside annulus).
+     * Only computes sqrt when inside the boosted annulus.
+     */
+    public static double getAccelerationSqBoosted(double mass, double distSq, double horizon, double boostRadius) {
+        double accel = getAccelerationSq(mass, distSq);
+        if (boostRadius <= 0) return accel;
+        double outer = horizon + boostRadius;
+        double outerSq = outer * outer;
+        double horizonSq = horizon * horizon;
+        if (distSq <= horizonSq || distSq >= outerSq) return accel;
+        double dist = Math.sqrt(distSq);
+        double t = (outer - dist) / boostRadius;
+        double t3 = t * t * t;
+        return accel * (1.0D + BOOST_MAX * t3);
     }
 
     /** Mass at which the horizon reaches radius r. Inverse of getHorizonRadius. */

@@ -18,7 +18,7 @@ void main(){
   } else if (uMode < 1.5) {
     float alpha = pow(fresnel, 2.0);
     float shimmer = 0.9 + 0.1 * sin(uTime * 1.1);
-    alpha *= 0.42 * shimmer;
+    alpha *= 0.44 * shimmer;
     if (alpha < 0.003) discard;
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;
@@ -31,12 +31,11 @@ void main(){
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;
   } else {
-    // Outer halo: widest fresnel band (pow 1.5) so the rim survives the
-    // discard cutoff, peak 0.20 keeps it faintest but clearly visible.
+    // Outer halo: widest fresnel band (pow 1.5) so the rim survives the discard cutoff
     float alpha = pow(fresnel, 1.5);
     float ang = atan(vPos.z, vPos.x);
     float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);
-    alpha *= 0.18 * shimmer;
+    alpha *= 0.17 * shimmer;
     if (alpha < 0.0005) discard;
     gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     return;

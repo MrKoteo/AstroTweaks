@@ -32,17 +32,23 @@ import net.minecraftforge.energy.CapabilityEnergy;
 import net.minecraftforge.energy.IEnergyStorage;
 
 public final class SpatialAnchor {
-    public static final long MAX_ENERGY = astrotweaks.item.TotemOfGod.TotemOfGod.MAX_ENERGY / 1000L;
+    public static final long MAX_ENERGY = 1_000_000_000_000L;
     public static final int FE_MAX = Integer.MAX_VALUE;
 
-    public static final long COST_KNOCKBACK = 1000L;
-    public static final long COST_FLUID = 20L;
+    public static final long COST_KNOCKBACK = 2000L;
+    //public static final long COST_FLUID = 20L;
     public static final long COST_COLLISION = 20L;
-    public static final long COST_FLIGHT = 100L;
+    public static final long COST_FLIGHT = 500L;
 
+    public static final long COST_PASSIVE = 2L;
+
+    
     private static final String ENERGY_KEY = "SpatialAnchorEnergy";
     private static final String ENABLED_KEY = "SpatialAnchorEnabled";
     private static final String FLIGHT_KEY = "SpatialAnchorFlight";
+
+    public static final int FLAG_ACTIVE = 1;
+    public static final int FLAG_FLIGHT = 2;
 
     public static final Item SPATIAL_ANCHOR = new ItemCustom()
             .setRegistryName("astrotweaks", "spatial_anchor")
@@ -58,35 +64,29 @@ public final class SpatialAnchor {
         IEnergyStorage storage = stack.getCapability(CapabilityEnergy.ENERGY, null);
         return storage instanceof AnchorEnergyStorage ? ((AnchorEnergyStorage) storage).getInternalEnergy() : 0L;
     }
-
     public static void setEnergyStored(ItemStack stack, long amount) {
         IEnergyStorage storage = stack.getCapability(CapabilityEnergy.ENERGY, null);
         if (storage instanceof AnchorEnergyStorage) {
             ((AnchorEnergyStorage) storage).setInternalEnergy(amount);
         }
     }
-
     public static long receiveEnergy(ItemStack stack, long amount, boolean simulate) {
         IEnergyStorage storage = stack.getCapability(CapabilityEnergy.ENERGY, null);
         return storage instanceof AnchorEnergyStorage ? ((AnchorEnergyStorage) storage).receiveInternal(amount, simulate) : 0L;
     }
-
     public static long extractEnergy(ItemStack stack, long amount, boolean simulate) {
         IEnergyStorage storage = stack.getCapability(CapabilityEnergy.ENERGY, null);
         return storage instanceof AnchorEnergyStorage ? ((AnchorEnergyStorage) storage).extractInternal(amount, simulate) : 0L;
     }
-
     public static float getCharge(ItemStack stack) {
         return (float) ((double) getEnergyStored(stack) / (double) MAX_ENERGY);
     }
-
     public static boolean isEnabled(ItemStack stack) {
         if (stack.isEmpty() || stack.getItem() != SPATIAL_ANCHOR) return false;
         NBTTagCompound tag = stack.getTagCompound();
         if (tag == null || !tag.hasKey(ENABLED_KEY)) return true; // default ON
         return tag.getBoolean(ENABLED_KEY);
     }
-
     public static void setEnabled(ItemStack stack, boolean enabled) {
         NBTTagCompound tag = stack.getTagCompound();
         if (tag == null) {
@@ -95,14 +95,12 @@ public final class SpatialAnchor {
         }
         tag.setBoolean(ENABLED_KEY, enabled);
     }
-
     public static boolean isFlightEnabled(ItemStack stack) {
         if (stack.isEmpty() || stack.getItem() != SPATIAL_ANCHOR) return false;
         NBTTagCompound tag = stack.getTagCompound();
         if (tag == null || !tag.hasKey(FLIGHT_KEY)) return false; // default OFF
         return tag.getBoolean(FLIGHT_KEY);
     }
-
     public static void setFlightEnabled(ItemStack stack, boolean enabled) {
         NBTTagCompound tag = stack.getTagCompound();
         if (tag == null) {
@@ -111,7 +109,6 @@ public final class SpatialAnchor {
         }
         tag.setBoolean(FLIGHT_KEY, enabled);
     }
-
     /** Есть ли у игрока хотя бы один якорь с включённым полётом и энергией */
     public static boolean hasFlightAnchor(EntityPlayer player) {
         if (player == null) return false;
@@ -119,38 +116,103 @@ public final class SpatialAnchor {
                 || hasFlightInList(player.inventory.armorInventory)
                 || hasFlightInList(player.inventory.offHandInventory);
     }
-
     private static boolean hasFlightInList(List<ItemStack> inv) {
         for (ItemStack s : inv) if (isAnchor(s) && isEnabled(s) && isFlightEnabled(s) && getEnergyStored(s) > 0) return true;
         return false;
     }
-
     public static boolean isAnchor(ItemStack stack) {
         return !stack.isEmpty() && stack.getItem() == SPATIAL_ANCHOR;
     }
-
     public static boolean hasActiveAnchor(EntityPlayer player) {
         if (player == null) return false;
         return hasActiveInList(player.inventory.mainInventory)
                 || hasActiveInList(player.inventory.armorInventory)
                 || hasActiveInList(player.inventory.offHandInventory);
     }
-
     private static boolean hasActiveInList(List<ItemStack> inv) {
         for (ItemStack s : inv) if (isAnchor(s) && isEnabled(s) && getEnergyStored(s) > 0) return true;
         return false;
     }
-
     public static long getTotalEnergy(EntityPlayer player) {
         return sumEnergy(player.inventory.mainInventory)
                 + sumEnergy(player.inventory.armorInventory)
                 + sumEnergy(player.inventory.offHandInventory);
     }
-
     private static long sumEnergy(List<ItemStack> inv) {
         long total = 0;
         for (ItemStack s : inv) if (isAnchor(s) && isEnabled(s)) total += getEnergyStored(s);
         return total;
+    }
+
+    // ------------------------------------------------------------------
+    // Fast scan — один проход по всем инвентарям за тик
+    // ------------------------------------------------------------------
+
+    /**
+     * Один проход по всем инвентарям игрока (main + armor + offHand).
+     * Возвращает битовую маску FLAG_ACTIVE / FLAG_FLIGHT.
+     * Если {@code totalOut != null}, в totalOut[0] кладётся суммарная энергия
+     * всех включённых якорей с энергией > 0.
+     *
+     * <p>Эквивалент цепочки hasActiveAnchor/hasFlightAnchor/getTotalEnergy,
+     * но читает NBT один раз на стак и без Capability-диспетчеризации.
+     */
+    public static int scanPlayerAnchors(EntityPlayer player, long[] totalOut) {
+        if (player == null) {
+            if (totalOut != null) totalOut[0] = 0L;
+            return 0;
+        }
+        int flags = 0;
+        long total = 0;
+
+        List<ItemStack> main = player.inventory.mainInventory;
+        for (int i = 0, n = main.size(); i < n; i++) {
+            int f = scanStack(main.get(i), totalOut != null);
+            if (f != 0) {
+                flags |= f;
+                if (totalOut != null) total += lastScanEnergy;
+            }
+        }
+        List<ItemStack> armor = player.inventory.armorInventory;
+        for (int i = 0, n = armor.size(); i < n; i++) {
+            int f = scanStack(armor.get(i), totalOut != null);
+            if (f != 0) {
+                flags |= f;
+                if (totalOut != null) total += lastScanEnergy;
+            }
+        }
+        List<ItemStack> off = player.inventory.offHandInventory;
+        for (int i = 0, n = off.size(); i < n; i++) {
+            int f = scanStack(off.get(i), totalOut != null);
+            if (f != 0) {
+                flags |= f;
+                if (totalOut != null) total += lastScanEnergy;
+            }
+        }
+
+        if (totalOut != null) totalOut[0] = total;
+        return flags;
+    }
+
+    /** Энергия последнего успешно просканированного стака (используется только внутри scanPlayerAnchors). */
+    private static long lastScanEnergy;
+
+    /**
+     * Сканирует один стак. Возвращает FLAG_ACTIVE / FLAG_FLIGHT / 0.
+     * Если wantEnergy == true, энергия стака записывается в {@link #lastScanEnergy}.
+     */
+    private static int scanStack(ItemStack s, boolean wantEnergy) {
+        if (s == null || s.isEmpty() || s.getItem() != SPATIAL_ANCHOR) return 0;
+        NBTTagCompound tag = s.getTagCompound();
+        if (tag == null) return 0;
+        // default ENABLED = true: если ключа нет — включён
+        if (tag.hasKey(ENABLED_KEY) && !tag.getBoolean(ENABLED_KEY)) return 0;
+        long e = tag.getLong(ENERGY_KEY);
+        if (e <= 0L) return 0;
+        int f = FLAG_ACTIVE;
+        if (tag.getBoolean(FLIGHT_KEY)) f |= FLAG_FLIGHT;
+        if (wantEnergy) lastScanEnergy = e;
+        return f;
     }
 
     /**
@@ -158,9 +220,17 @@ public final class SpatialAnchor {
      * @return true if full amount was consumed
      */
     public static boolean tryConsume(EntityPlayer player, long amount) {
+        return tryConsume(player, amount, getTotalEnergy(player));
+    }
+
+    /**
+     * Tries to consume amount from enabled anchors in inventory,
+     * используя заранее известный суммарный объём энергии (из scanPlayerAnchors).
+     * @return true if full amount was consumed
+     */
+    public static boolean tryConsume(EntityPlayer player, long amount, long knownTotal) {
         if (amount <= 0) return true;
-        long available = getTotalEnergy(player);
-        if (available < amount) return false;
+        if (knownTotal < amount) return false;
         long remaining = amount;
         remaining = drain(player.inventory.mainInventory, remaining);
         if (remaining > 0) remaining = drain(player.inventory.armorInventory, remaining);
@@ -169,8 +239,8 @@ public final class SpatialAnchor {
     }
 
     private static long drain(List<ItemStack> inv, long remaining) {
-        for (ItemStack s : inv) {
-            if (remaining <= 0) break;
+        for (int i = 0, n = inv.size(); i < n && remaining > 0; i++) {
+            ItemStack s = inv.get(i);
             if (isAnchor(s) && isEnabled(s)) {
                 remaining -= extractEnergy(s, remaining, false);
             }
@@ -189,6 +259,23 @@ public final class SpatialAnchor {
         return tryConsume(player, cost);
     }
 
+    /**
+     * Пассивное потребление: списывает COST_PASSIVE FE с каждого включённого якоря.
+     */
+    public static void tickPassiveDrain(EntityPlayer player) {
+        drainPassive(player.inventory.mainInventory);
+        drainPassive(player.inventory.offHandInventory);
+    }
+    private static void drainPassive(List<ItemStack> inv) {
+        for (int i = 0, n = inv.size(); i < n; i++) {
+            ItemStack s = inv.get(i);
+            if (!isAnchor(s) || !isEnabled(s)) continue;
+            extractEnergy(s, COST_PASSIVE, false);
+        }
+    }
+
+
+
     // ------------------------------------------------------------------
     // Item
     // ------------------------------------------------------------------
@@ -203,7 +290,6 @@ public final class SpatialAnchor {
         public ICapabilityProvider initCapabilities(ItemStack stack, @Nullable NBTTagCompound nbt) {
             return new EnergyProvider(stack);
         }
-
         @Override
         public void getSubItems(CreativeTabs tab, NonNullList<ItemStack> items) {
             if (!isInCreativeTab(tab)) return;
@@ -234,11 +320,11 @@ public final class SpatialAnchor {
             boolean enabled = isEnabled(stack);
             boolean flight = isFlightEnabled(stack);
             list.add(new TextComponentTranslation("item.spatial_anchor.tooltip").getFormattedText());
-            list.add(new TextComponentTranslation("item.spatial_anchor.charge").getFormattedText()
+            list.add(new TextComponentTranslation("u.charge").getFormattedText()
                     + TextFormatting.RED + formatPercent(getCharge(stack)) + "%");
-            list.add(new TextComponentTranslation("item.spatial_anchor.energy").getFormattedText()
+            list.add(new TextComponentTranslation("u.energy").getFormattedText()
                     + TextFormatting.GREEN + formatNumber(stored) + " / " + formatNumber(MAX_ENERGY) + " FE");
-            list.add(new TextComponentTranslation("item.spatial_anchor.buffer").getFormattedText()
+            list.add(new TextComponentTranslation("u.fe_buffer").getFormattedText()
                     + TextFormatting.DARK_GRAY + formatNumber(Math.min(stored, FE_MAX)) + " / " + formatNumber(FE_MAX));
             String stateKey = enabled ? "item.spatial_anchor.enabled" : "item.spatial_anchor.disabled";
             TextFormatting col = enabled ? TextFormatting.GREEN : TextFormatting.RED;
@@ -277,7 +363,7 @@ public final class SpatialAnchor {
                     setEnabled(stack, !cur);
                     String msgKey = !cur ? "item.spatial_anchor.toggle_on" : "item.spatial_anchor.toggle_off";
                     player.sendStatusMessage(new TextComponentString(new TextComponentTranslation(msgKey).getFormattedText()), true);
-                    if (!cur == false && isFlightEnabled(stack)) {
+                    if (!cur && isFlightEnabled(stack)) {
                         // выключили якорь — гасим полёт
                         if (!player.capabilities.isCreativeMode) {
                             player.capabilities.allowFlying = false;
@@ -309,12 +395,11 @@ public final class SpatialAnchor {
         public int getRGBDurabilityForDisplay(ItemStack stack) {
             float charge = getCharge(stack);
             if (!isEnabled(stack)) return 0x777777;
-            if (isFlightEnabled(stack)) return 0x55FFFF; // голубой когда полёт вкл
+            if (isFlightEnabled(stack)) return 0x00FFFF; // голубой когда полёт вкл
             int red = (int) ((1.0F - charge) * 255.0F);
             int green = (int) (charge * 255.0F);
             return (red << 16) | (green << 8);
         }
-
         private static String formatPercent(float charge) {
             return String.format(Locale.ROOT, "%.1f", charge * 100.0F);
         }

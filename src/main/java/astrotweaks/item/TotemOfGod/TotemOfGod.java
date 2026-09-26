@@ -145,9 +145,9 @@ public final class TotemOfGod {
 		}
 
 		private static final String text1 = new TextComponentTranslation("item.totem_of_god.tooltip").getFormattedText();
-		private static final String text2 = new TextComponentTranslation("item.totem_of_god.charge").getFormattedText();
-		private static final String text3 = new TextComponentTranslation("item.totem_of_god.energy").getFormattedText();
-		private static final String text4 = new TextComponentTranslation("item.totem_of_god.buffer").getFormattedText();
+		private static final String text2 = new TextComponentTranslation("u.charge").getFormattedText();
+		private static final String text3 = new TextComponentTranslation("u.energy").getFormattedText();
+		private static final String text4 = new TextComponentTranslation("u.fe_buffer").getFormattedText();
 
 
 		@Override

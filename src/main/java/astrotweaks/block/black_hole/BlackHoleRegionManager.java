@@ -24,7 +24,7 @@ public class BlackHoleRegionManager {
      * request per black hole; the earliest wins, later changes are ignored
      * until it fires.
      */
-    public static final long RESCAN_DELAY_TICKS = 6000L;
+    public static final long RESCAN_DELAY_TICKS = 3600L; // 3 минуты
     /**
      * Prompt revisit throttle: an immediate EMPTY-region recheck fires only
      * once the mass has grown by this much since the last prompt revisit...
@@ -239,8 +239,13 @@ public class BlackHoleRegionManager {
         int used = 0;
         double massDelta = 0.0D;
         double curMass = te.getMass();
-        double horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+        double horizon = BlackHoleUtils.getHorizonRadius(curMass);
+        double horizonPlus = horizon + 0.5D;
         double horizonPlusSq = horizonPlus * horizonPlus;
+        double boostRadius = BlackHoleUtils.getBoostRadius(curMass);
+        double boostOuter = horizon + boostRadius;
+        double boostOuterSq = boostOuter * boostOuter;
+        double horizonSq = horizon * horizon;
         double pendingGain = 0.0D;
         double refreshAt = Math.max(1.0D, curMass * HORIZON_REFRESH_REL);
         BlockPos.PooledMutableBlockPos pooled = BlockPos.PooledMutableBlockPos.retain();
@@ -269,14 +274,26 @@ public class BlackHoleRegionManager {
                 if (mat.isLiquid() || isVegetation(st, mat)) {
                     boolean insideHorizon = bdistSq <= horizonPlusSq;
                     double accel = BlackHoleUtils.getAccelerationSq(curMass, bdistSq);
+                    // near-horizon cubic boost for liquids (0.08 threshold)
+                    if (!insideHorizon && boostRadius > 0 && bdistSq > horizonSq && bdistSq < boostOuterSq) {
+                        double dist = Math.sqrt(bdistSq);
+                        double t = (boostOuter - dist) / boostRadius;
+                        double t3 = t * t * t;
+                        accel *= (1.0D + BlackHoleUtils.BOOST_MAX * t3);
+                    }
                     if (insideHorizon || accel > 0.08) {
                         eat(world, pooled, true);
                         massDelta += BlackHoleUtils.MASS_PER_LIQUID;
                         curMass += BlackHoleUtils.MASS_PER_LIQUID;
                         pendingGain += BlackHoleUtils.MASS_PER_LIQUID;
                         if (pendingGain >= refreshAt) {
-                            horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+                            horizon = BlackHoleUtils.getHorizonRadius(curMass);
+                            horizonPlus = horizon + 0.5D;
                             horizonPlusSq = horizonPlus * horizonPlus;
+                            horizonSq = horizon * horizon;
+                            boostRadius = BlackHoleUtils.getBoostRadius(curMass);
+                            boostOuter = horizon + boostRadius;
+                            boostOuterSq = boostOuter * boostOuter;
                             pendingGain = 0.0D;
                         }
                     } else {
@@ -292,15 +309,20 @@ public class BlackHoleRegionManager {
 
                 double check = BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
 
-                if (canEatSq(bdistSq, check, curMass, horizonPlusSq)) {
+                if (canEatSqBoosted(bdistSq, check, curMass, horizonPlusSq, horizonSq, boostOuterSq, boostOuter, boostRadius, horizon)) {
                     eat(world, pooled, false);
                     double gain = BlackHoleUtils.massGainForHardness(hardness);
                     massDelta += gain;
                     curMass += gain;
                     pendingGain += gain;
                     if (pendingGain >= refreshAt) {
-                        horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+                        horizon = BlackHoleUtils.getHorizonRadius(curMass);
+                        horizonPlus = horizon + 0.5D;
                         horizonPlusSq = horizonPlus * horizonPlus;
+                        horizonSq = horizon * horizon;
+                        boostRadius = BlackHoleUtils.getBoostRadius(curMass);
+                        boostOuter = horizon + boostRadius;
+                        boostOuterSq = boostOuter * boostOuter;
                         pendingGain = 0.0D;
                     }
                 } else {
@@ -377,8 +399,13 @@ public class BlackHoleRegionManager {
         int used = 0;
         double massDelta = 0.0D;
         double curMass = te.getMass();
-        double horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+        double horizon = BlackHoleUtils.getHorizonRadius(curMass);
+        double horizonPlus = horizon + 0.5D;
         double horizonPlusSq = horizonPlus * horizonPlus;
+        double horizonSq = horizon * horizon;
+        double boostRadius = BlackHoleUtils.getBoostRadius(curMass);
+        double boostOuter = horizon + boostRadius;
+        double boostOuterSq = boostOuter * boostOuter;
         double pendingGain = 0.0D;
         double refreshAt = Math.max(1.0D, curMass * HORIZON_REFRESH_REL);
         BlockPos.PooledMutableBlockPos pooled = BlockPos.PooledMutableBlockPos.retain();
@@ -411,14 +438,25 @@ public class BlackHoleRegionManager {
                 if (mat.isLiquid() || isVegetation(st, mat)) {
                     boolean insideHorizon = bdistSq <= horizonPlusSq;
                     double accel = BlackHoleUtils.getAccelerationSq(curMass, bdistSq);
+                    if (!insideHorizon && boostRadius > 0 && bdistSq > horizonSq && bdistSq < boostOuterSq) {
+                        double dist = Math.sqrt(bdistSq);
+                        double t = (boostOuter - dist) / boostRadius;
+                        double t3 = t * t * t;
+                        accel *= (1.0D + BlackHoleUtils.BOOST_MAX * t3);
+                    }
                     if (insideHorizon || accel > 0.08) {
                         eat(world, pooled, true);
                         massDelta += BlackHoleUtils.MASS_PER_LIQUID;
                         curMass += BlackHoleUtils.MASS_PER_LIQUID;
                         pendingGain += BlackHoleUtils.MASS_PER_LIQUID;
                         if (pendingGain >= refreshAt) {
-                            horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+                            horizon = BlackHoleUtils.getHorizonRadius(curMass);
+                            horizonPlus = horizon + 0.5D;
                             horizonPlusSq = horizonPlus * horizonPlus;
+                            horizonSq = horizon * horizon;
+                            boostRadius = BlackHoleUtils.getBoostRadius(curMass);
+                            boostOuter = horizon + boostRadius;
+                            boostOuterSq = boostOuter * boostOuter;
                             pendingGain = 0.0D;
                         }
                         r.markDeferredRemoved(r.recheckCursor);
@@ -434,15 +472,20 @@ public class BlackHoleRegionManager {
 
                 double check = BlackHoleUtils.effectiveHardnessForCheck(mat, hardness);
 
-                if (canEatSq(bdistSq, check, curMass, horizonPlusSq)) {
+                if (canEatSqBoosted(bdistSq, check, curMass, horizonPlusSq, horizonSq, boostOuterSq, boostOuter, boostRadius, horizon)) {
                     eat(world, pooled, false);
                     double gain = BlackHoleUtils.massGainForHardness(hardness);
                     massDelta += gain;
                     curMass += gain;
                     pendingGain += gain;
                     if (pendingGain >= refreshAt) {
-                        horizonPlus = BlackHoleUtils.getHorizonRadius(curMass) + 0.5D;
+                        horizon = BlackHoleUtils.getHorizonRadius(curMass);
+                        horizonPlus = horizon + 0.5D;
                         horizonPlusSq = horizonPlus * horizonPlus;
+                        horizonSq = horizon * horizon;
+                        boostRadius = BlackHoleUtils.getBoostRadius(curMass);
+                        boostOuter = horizon + boostRadius;
+                        boostOuterSq = boostOuter * boostOuter;
                         pendingGain = 0.0D;
                     }
                     r.markDeferredRemoved(r.recheckCursor);
@@ -574,6 +617,7 @@ public class BlackHoleRegionManager {
                             double mAccel = eff * bdist * bdist / BlackHoleUtils.G;
                             double mHorizon = BlackHoleUtils.massForHorizon(bdist - 0.5);
                             double need = Math.min(mAccel, mHorizon);
+                            if (need == mAccel) need = boostedNeed(bdist, eff, mAccel, mHorizon);
                             if (need < r.wakeMass) r.wakeMass = need;
                         }
                     } else {
@@ -582,6 +626,7 @@ public class BlackHoleRegionManager {
                         double mAccel = eff * bdist * bdist / BlackHoleUtils.G;
                         double mHorizon = BlackHoleUtils.massForHorizon(bdist - 0.5);
                         double need = Math.min(mAccel, mHorizon);
+                        if (need == mAccel) need = boostedNeed(bdist, eff, mAccel, mHorizon);
                         if (need < r.wakeMass) r.wakeMass = need;
                     }
                 } catch (Exception ignored) {}
@@ -646,6 +691,20 @@ public class BlackHoleRegionManager {
         if (bdistSq <= horizonPlusSq) return true;
         return BlackHoleUtils.getAccelerationSq(curMass, bdistSq) >= checkHardness;
     }
+
+    private boolean canEatSqBoosted(double bdistSq, double checkHardness, double curMass,
+                                     double horizonPlusSq, double horizonSq, double boostOuterSq,
+                                     double boostOuter, double boostRadius, double horizon) {
+        if (bdistSq <= horizonPlusSq) return true;
+        double accel = BlackHoleUtils.getAccelerationSq(curMass, bdistSq);
+        if (boostRadius > 0 && bdistSq > horizonSq && bdistSq < boostOuterSq) {
+            double dist = Math.sqrt(bdistSq);
+            double t = (boostOuter - dist) / boostRadius;
+            double t3 = t * t * t;
+            accel *= (1.0D + BlackHoleUtils.BOOST_MAX * t3);
+        }
+        return accel >= checkHardness;
+    }
     private void eat(World world, BlockPos bp, boolean liquid) {
         if (liquid) world.setBlockState(bp, Blocks.AIR.getDefaultState(), 2);
         else world.setBlockToAir(bp);
@@ -681,12 +740,55 @@ public class BlackHoleRegionManager {
                 double mAccel = effective * bdist * bdist / BlackHoleUtils.G;
                 double mHorizon = BlackHoleUtils.massForHorizon(bdist - 0.5);
                 double m = Math.min(mAccel, mHorizon);
+                // Apply near-horizon boost correction: effective accel is up to 10x, so mass needed is lower.
+                // One-step correction: evaluate boost at mAccel, adjust. Safe to wake early.
+                if (m == mAccel && mAccel < mHorizon) {
+                    double h = BlackHoleUtils.getHorizonRadius(mAccel);
+                    double rb = BlackHoleUtils.getBoostRadius(mAccel);
+                    if (rb > 0 && bdist > h && bdist < h + rb) {
+                        double t = (h + rb - bdist) / rb;
+                        double t3 = t * t * t;
+                        double boost = 1.0D + BlackHoleUtils.BOOST_MAX * t3;
+                        double mBoosted = mAccel / boost;
+                        // refine once: boost shrinks with smaller mass, so take max of two estimates
+                        if (mBoosted < m) {
+                            // second iteration for stability (cheap, rare path)
+                            double h2 = BlackHoleUtils.getHorizonRadius(mBoosted);
+                            double rb2 = BlackHoleUtils.getBoostRadius(mBoosted);
+                            if (rb2 > 0 && bdist > h2 && bdist < h2 + rb2) {
+                                double t2 = (h2 + rb2 - bdist) / rb2;
+                                double boost2 = 1.0D + BlackHoleUtils.BOOST_MAX * t2 * t2 * t2;
+                                mBoosted = Math.max(mBoosted, mAccel / boost2);
+                            }
+                            m = Math.min(mBoosted, mHorizon);
+                        }
+                    }
+                }
                 if (m < minMass) minMass = m;
             }
         } finally {
             pooled.release();
         }
         return minMass;
+    }
+
+    private static double boostedNeed(double bdist, double effective, double mAccel, double mHorizon) {
+        if (mAccel >= mHorizon) return mHorizon;
+        double h = BlackHoleUtils.getHorizonRadius(mAccel);
+        double rb = BlackHoleUtils.getBoostRadius(mAccel);
+        if (rb <= 0 || bdist <= h || bdist >= h + rb) return mAccel;
+        double t = (h + rb - bdist) / rb;
+        double boost = 1.0D + BlackHoleUtils.BOOST_MAX * t * t * t;
+        double mBoosted = mAccel / boost;
+        double h2 = BlackHoleUtils.getHorizonRadius(mBoosted);
+        double rb2 = BlackHoleUtils.getBoostRadius(mBoosted);
+        if (rb2 > 0 && bdist > h2 && bdist < h2 + rb2) {
+            double t2 = (h2 + rb2 - bdist) / rb2;
+            double boost2 = 1.0D + BlackHoleUtils.BOOST_MAX * t2 * t2 * t2;
+            double m2 = mAccel / boost2;
+            if (m2 > mBoosted) mBoosted = m2;
+        }
+        return Math.min(mBoosted, mHorizon);
     }
 
     /** Vegetation that should be absorbed like liquids (hardness ~0.08): tallgrass, flowers, bushes, vine etc. */

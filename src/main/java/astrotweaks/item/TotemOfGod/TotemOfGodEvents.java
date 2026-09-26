@@ -162,9 +162,6 @@ public class TotemOfGodEvents {
 		remaining = drain(player.inventory.mainInventory, remaining);
 
 		if (remaining > 0L) {
-			remaining = drain(player.inventory.armorInventory, remaining);
-		}
-		if (remaining > 0L) {
 			remaining = drain(player.inventory.offHandInventory, remaining);
 		}
 		return amount - remaining;

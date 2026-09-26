@@ -336,22 +336,16 @@ item.titanium_x.name=Titanium cross
 item.tool_mount.name=Tool Mount
 item.totem_of_god.name=§dTotem of God
 item.totem_of_god.tooltip=§6True Immortality
-item.totem_of_god.charge=§bCharge: 
-item.totem_of_god.energy=§bEnergy: 
-item.totem_of_god.buffer=§8FE buffer: 
-item.spatial_anchor.name=§bSpatial Anchor
-item.spatial_anchor.tooltip=§6Stabilizes space around the bearer
-item.spatial_anchor.charge=§bCharge: 
-item.spatial_anchor.energy=§bEnergy: 
-item.spatial_anchor.buffer=§8FE buffer: 
+item.spatial_anchor.name=§dSpatial Anchor
+item.spatial_anchor.tooltip=§6Spatial invariance
 item.spatial_anchor.enabled=§aStatus:
 item.spatial_anchor.disabled=§cStatus:
-item.spatial_anchor.toggle_on=§a[Anchor] Spatial Anchor ON
-item.spatial_anchor.toggle_off=§c[Anchor] Spatial Anchor OFF
+item.spatial_anchor.toggle_on=§a[Anchor] ON
+item.spatial_anchor.toggle_off=§c[Anchor] OFF
 item.spatial_anchor.flight_on=§bFlight:
 item.spatial_anchor.flight_off=§8Flight:
-item.spatial_anchor.flight_enable=§b[Anchor] Flight mode ON (100 FE/tick)
-item.spatial_anchor.flight_disable=§c[Anchor] Flight mode OFF
+item.spatial_anchor.flight_enable=§b[Anchor] Flight ON
+item.spatial_anchor.flight_disable=§c[Anchor] Flight OFF
 item.triple_abd_quant.name=Ternary system of quanta α-β-Δ
 item.triple_abg_quant.name=Ternary system of quanta α-β-γ
 item.triple_agd_quant.name=Ternary system of quanta α-γ-Δ
@@ -571,6 +565,15 @@ tile.u_destroyer_block.name=§dU Destroyer Block
 tile.u_killer_block.name=§dU Killer Block
 tile.unknown_block.name=§c???
 tile.astrotweaks.mirage_a.name=§bMirage Block
+
+
+
+## Universal
+
+u.charge=§bCharge:
+u.energy=§bEnergy:
+u.fe_buffer=§8FE buffer: 
+
 
 
 

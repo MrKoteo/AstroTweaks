@@ -38,7 +38,6 @@ import astrotweaks.world.NaturesPower.GrassGrowth;
 import astrotweaks.event.EventBreakBlock;
 import astrotweaks.gameplay.RealisticBreak;
 import astrotweaks.recipe.RecipeHandler;
-//import astrotweaks.creativetab.ATCreativeTabs;
 
 
 
@@ -60,7 +59,7 @@ public class AstrotweaksMod {
 	public static IProxyAstrotweaksMod proxy;
 	@Mod.Instance(MODID)
 	public static AstrotweaksMod instance;
-	//public ElementsAstrotweaksMod elements = new ElementsAstrotweaksMod();
+
 	// ####################################################################################################
 
 	public AstrotweaksMod() {
@@ -84,7 +83,7 @@ public class AstrotweaksMod {
 		//GameRegistry.registerFuelHandler(elements);
 
 		NetworkRegistry.INSTANCE.registerGuiHandler(this, new GUIHandler.GuiHandler());
-		//MinecraftForge.EVENT_BUS.register(elements);
+
 		proxy.preInit(event);
 
 		if (ModVariables.Enable_Depths_Dimension) {
@@ -212,7 +211,6 @@ public class AstrotweaksMod {
 	@Mod.EventHandler
 	public void serverLoad(FMLServerStartingEvent event) {
 		astrotweaks.command.ATCommands.init(event);
-		//elements.getElements().forEach(element -> element.serverLoad(event));
 		proxy.serverLoad(event);
 	}
 
@@ -292,7 +290,6 @@ public class AstrotweaksMod {
 
 	@SubscribeEvent
 	public void registerBiomes(RegistryEvent.Register<Biome> event) {
-		//event.getRegistry().registerAll(elements.getBiomes().stream().map(Supplier::get).toArray(Biome[]::new));
 		if (ModVariables.Enable_Depths_Dimension) event.getRegistry().register(astrotweaks.world.biome.BiomeCavern.CAVERN);
 
 

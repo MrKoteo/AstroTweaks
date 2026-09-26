@@ -269,6 +269,8 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         int parity4 = (int)(world.getTotalWorldTime() & 3);
 
         double horizon   = BlackHoleUtils.getHorizonRadius(mass);
+        double boostRadius = BlackHoleUtils.getBoostRadius(mass);
+        double boostOuter = horizon + boostRadius;
         double gravRange = BlackHoleUtils.getGravityRange(mass);
         if (gravRange < 0.5) return;
 
@@ -324,7 +326,14 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
             if (dist < 0.05) dist = 0.05;
 
-            double accel = BlackHoleUtils.getAcceleration(mass, dist);
+            double accelRaw = BlackHoleUtils.getAcceleration(mass, dist);
+            // Near-horizon boost: 10x at horizon, cubic falloff to 1x at Ro
+            double accel = accelRaw;
+            if (boostRadius > 0 && dist > horizon && dist < boostOuter) {
+                double t = (boostOuter - dist) / boostRadius;
+                double t3 = t * t * t;
+                accel = accelRaw * (1.0D + BlackHoleUtils.BOOST_MAX * t3);
+            }
             boolean insideHorizon = dist <= horizon;
 
             // --- Suffocation (applied BEFORE horizon block, so guaranteed inside) ---
@@ -377,7 +386,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                         //continue;
                     //}
                     if (astrotweaks.item.SpatialAnchor.SpatialAnchor.hasActiveAnchor(p)) {
-                        long cost = (long) Math.ceil(accel * 100.0D);
+                        long cost = (long) Math.ceil(accel * 200.0D);
                         if (cost < 1L) cost = 1L;
                         if (astrotweaks.item.SpatialAnchor.SpatialAnchor.tryConsume(p, cost)) {
                             continue;
@@ -388,7 +397,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
 
             // --- Motion ---
             double maxAccel = Math.min(accel, dist * 0.45) * stride;
-            if (maxAccel > 3.0) maxAccel = 3.0;
+            if (maxAccel > 5.0) maxAccel = 5.0;
 
             double nx = dx / dist, ny = dy / dist, nz = dz / dist;
             e.motionX += nx * maxAccel * 0.35;
@@ -396,7 +405,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             e.motionZ += nz * maxAccel * 0.35;
 
             double speed = Math.sqrt(e.motionX*e.motionX + e.motionY*e.motionY + e.motionZ*e.motionZ);
-            double maxSpeed = 2.5;
+            double maxSpeed = 4.5;
             if (speed > maxSpeed) {
                 double s = maxSpeed / speed;
                 e.motionX *= s; e.motionY *= s; e.motionZ *= s;

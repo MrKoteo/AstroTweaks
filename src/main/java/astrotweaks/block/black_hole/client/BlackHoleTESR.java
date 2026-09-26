@@ -128,7 +128,7 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
                 sh.setMode(2.0f); BlackHoleRenderHelper.drawSphere(halo2, 0xFFFFFF, 1.0f, 32, 32);
                 sh.setMode(3.0f); BlackHoleRenderHelper.drawSphere(halo3, 0xFFFFFF, 1.0f, 32, 32);
             } else {
-                BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.29f, 16, 16);
+                BlackHoleRenderHelper.drawSphere(halo1, 0x000000, 0.30f, 16, 16);
                 BlackHoleRenderHelper.drawSphere(halo2, 0x000000, 0.16f, 16, 16);
                 BlackHoleRenderHelper.drawSphere(halo3, 0x000000, 0.02f, 16, 16);
             }
