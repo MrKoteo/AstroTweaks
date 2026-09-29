@@ -79,7 +79,7 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
      */
     static void renderStaticCore(BlackHoleTileEntity te, double x, double y, double z, float partialTicks) {
         double mass = te.getMass();
-        double horizon = BlackHoleUtils.getVisualHorizonRadius(mass);
+        double horizon = te.getRenderHorizon();   // кэш в TE: без pow на каждый кадр
         double gravRange = BlackHoleUtils.getGravityRange(mass);
 
         GlStateManager.pushMatrix();

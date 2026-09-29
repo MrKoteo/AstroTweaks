@@ -1,8 +1,10 @@
 package astrotweaks.block.black_hole;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.boss.EntityDragon;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
+import net.minecraft.entity.passive.EntitySquid;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
@@ -152,16 +154,32 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     // Кэш для getRenderBoundingBox — избегаем 2 pow + аллокацию AABB каждый кадр
     private double cachedBBMass = Double.NaN;
     private AxisAlignedBB cachedBB;
+    // Кэш горизонта рендера. Общий single-slot кэш BlackHoleUtils протухает при
+    // 2+ дырах (у каждой своя масса) — то есть на каждую дыру каждый кадр
+    // уходил лишний Math.pow. Здесь кэш на саму TE: попадание по битам массы.
+    private double cachedHorizonMassBits = Double.NaN;
+    private double cachedHorizon;
     // Кэш для tickEntities AABB
     private double cachedGravRange = Double.NaN;
     private AxisAlignedBB cachedAABB;
+
+    /** Горизонт для рендера, кэшированный по массе. То же значение, что напрямую. */
+    public double getRenderHorizon() {
+        double m = mass;
+        double bits = Double.doubleToLongBits(m);
+        if (bits != cachedHorizonMassBits) {
+            cachedHorizonMassBits = bits;
+            cachedHorizon = BlackHoleUtils.getVisualHorizonRadius(m);
+        }
+        return cachedHorizon;
+    }
 
     @Override
     public AxisAlignedBB getRenderBoundingBox() {
         double m = mass;
         if (m != cachedBBMass || cachedBB == null) {
             cachedBBMass = m;
-            double h = BlackHoleUtils.getVisualHorizonRadius(m);
+            double h = getRenderHorizon();
             double t = BlackHoleUtils.getHaloThickness(h);
             double rad = Math.max(h + t * 2 + 1.0D, 2.0D) + 1.0D;
             cachedBB = new AxisAlignedBB(pos).grow(rad, rad, rad);
@@ -272,6 +290,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         double boostOuter = horizon + boostRadius;
         double gravRange = BlackHoleUtils.getGravityRange(mass);
         if (gravRange < 0.5) return;
+        double gravRangeSq = gravRange * gravRange;
 
         double cx = pos.getX() + 0.5;
         double cy = pos.getY() + 0.5;
@@ -291,7 +310,8 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             if (e == null || e.isDead) continue;
             if (e instanceof EntityPlayer && ((EntityPlayer)e).isSpectator()) continue;
             boolean isPlayer = e instanceof EntityPlayerMP;
-            // Stride by type: items/XP across 4 ticks, others across 2 ticks
+            // Один раз на сущность: используется и в страйде, и в anchor, и в anchor-высоте,
+            // и в поглощении горизонтом.
             boolean isItemOrXp = e instanceof EntityItem || e instanceof EntityXPOrb;
             if (!isPlayer) {
                 if (isItemOrXp) {
@@ -301,11 +321,9 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                 }
             }
 
-            // Blacklist
-            boolean blacklisted = false;
-            for (Class<? extends Entity> cls : BlackHoleUtils.ENTITY_BLACKLIST)
-                if (cls.isInstance(e)) { blacklisted = true; break; }
-            if (blacklisted) continue;
+            // Чёрный список — ровно эти два класса. Раньше был цикл с Class.isInstance
+            // на каждую сущность в кубе каждый тик.
+            if (e instanceof EntitySquid || e instanceof EntityDragon) continue;
 
             if (e instanceof EntityPlayer) {
                 EntityPlayer p = (EntityPlayer) e;
@@ -314,18 +332,28 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             if (e.isDead) continue;
 
             double ey = e.posY + e.height * 0.5;
-            if (e instanceof EntityItem || e instanceof EntityXPOrb) ey = e.posY + 0.25;
+            if (isItemOrXp) ey = e.posY + 0.25;
 
             // Compensate stride: items/XP run every 4 ticks (x4), others every 2 ticks (x2)
-            double stride = isItemOrXp ? 4.0 : 2.0;
+            double stride = isPlayer ? 1.0 : (isItemOrXp ? 4.0 : 2.0);
 
             double dx = cx - e.posX;
             double dy = cy - ey;
             double dz = cz - e.posZ;
-            double dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            double distSq = dx * dx + dy * dy + dz * dz;
+            // Дешёвый отсев ДО извлечения корня. MIN_ACCEL по определению равен
+            // getGravityRange, а горизонт всегда меньше gravRange — значит за этой
+            // границей сущности всё равно нечего делать: ни тяги, ни поглощения
+            // (поглощение проверяется позже и требует dist <= horizon < gravRange).
+            // Отсекает ~48% объёма куба (вписанная сфера в куб) без единого sqrt.
+            if (distSq > gravRangeSq) continue;
+            double dist = Math.sqrt(distSq);
             if (dist < 0.05) dist = 0.05;
 
-            double accelRaw = BlackHoleUtils.getAcceleration(mass, dist);
+            // getAccelerationSq кладёт тот же минимум dist=0.1, что и getAcceleration,
+            // но берёт квадрат расстояния — корни на сущности больше не считаются дважды.
+            double accelRaw = BlackHoleUtils.getAccelerationSq(mass, distSq);
+
             // Near-horizon boost: 10x at horizon, cubic falloff to 1x at Ro
             double accel = accelRaw;
             if (boostRadius > 0 && dist > horizon && dist < boostOuter) {
@@ -364,7 +392,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                 continue;
             }
 
-            if (dist > gravRange) continue;
+            // dist > gravRange уже отсечено выше (по квадрату, до корня).
             if (accel < BlackHoleUtils.MIN_ACCEL) continue;
 
             // --- SpatialAnchor: блокировка гравитации за FE (accel*100) ---

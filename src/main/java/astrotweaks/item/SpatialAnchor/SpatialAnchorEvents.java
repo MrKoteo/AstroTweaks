@@ -106,7 +106,8 @@ public class SpatialAnchorEvents {
             UUID id = player.getUniqueID();
             PREV_POS.remove(id);
             PREV_MOTION.remove(id);
-            // якорь выключен / сел — снимем team (оптимизированно, идемпотентно)
+            // якорь выключен / сел / выброшен — снимаем и полёт, и team
+            SpatialAnchor.syncFlightState(player, false);
             SpatialAnchorTeams.ensureRemoved(player);
             return;
         }
@@ -123,19 +124,10 @@ public class SpatialAnchorEvents {
         if (m == null) { m = new double[3]; PREV_MOTION.put(id, m); }
         m[0] = player.motionX; m[1] = player.motionY; m[2] = player.motionZ;
 
-        // Включаем allowFlying если flight-mode активен
-        if ((flags & SpatialAnchor.FLAG_FLIGHT) != 0) {
-            if (!player.capabilities.allowFlying) {
-                player.capabilities.allowFlying = true;
-                player.sendPlayerAbilities();
-            }
-            float target = player.isSprinting() ? 0.10F : 0.07F;
-            float fs = target * 0.5F;
-            if (Math.abs(player.capabilities.getFlySpeed() - fs) > 0.001F) {
-                player.capabilities.setFlySpeed(fs);
-                player.sendPlayerAbilities();
-            }
-        }
+        // Синхронизируем allowFlying/flySpeed с состоянием якорей.
+        // Снятие полёта здесь же чинит «не могу плыть» (vanilla при isFlying=true
+        // не применяет водную физику — игрок просто тонет).
+        SpatialAnchor.syncFlightState(player, (flags & SpatialAnchor.FLAG_FLIGHT) != 0);
     }
 
     @SubscribeEvent
@@ -147,6 +139,7 @@ public class SpatialAnchorEvents {
         long[] total = new long[1];
         int flags = SpatialAnchor.scanPlayerAnchors(player, total);
         if ((flags & SpatialAnchor.FLAG_ACTIVE) == 0) {
+            SpatialAnchor.syncFlightState(player, false);
             SpatialAnchorTeams.ensureRemoved(player);
             return;
         }
@@ -166,11 +159,7 @@ public class SpatialAnchorEvents {
                     if (SpatialAnchor.isFlightEnabled(s)) SpatialAnchor.setFlightEnabled(s, false);
                 for (ItemStack s : player.inventory.armorInventory)
                     if (SpatialAnchor.isFlightEnabled(s)) SpatialAnchor.setFlightEnabled(s, false);
-                if (!player.capabilities.isCreativeMode) {
-                    player.capabilities.allowFlying = false;
-                    player.capabilities.isFlying = false;
-                    player.sendPlayerAbilities();
-                }
+                SpatialAnchor.syncFlightState(player, false);
                 // полёт слетел — коллизию теперь обрабатываем как обычный режим.
                 // total[] устарел (полёт выключен, энергия ещё могла остаться),
                 // поэтому в обычном режиме коллизии списываем без knownTotal.
@@ -269,6 +258,9 @@ public class SpatialAnchorEvents {
     public void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.player.world.isRemote) return;
         SpatialAnchorTeams.onPlayerLogout((EntityPlayer) event.player);
+        // Гасим полёт до сохранения NBT, иначе игрок вернётся в игру висящим в воздухе
+        SpatialAnchor.syncFlightState((EntityPlayer) event.player, false);
+        SpatialAnchor.forgetFlightTracking((EntityPlayer) event.player);
         UUID id = event.player.getUniqueID();
         PREV_POS.remove(id);
         PREV_MOTION.remove(id);
@@ -277,11 +269,12 @@ public class SpatialAnchorEvents {
     @SubscribeEvent
     public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.player.world.isRemote) return;
-        // на входной тик всё равно пересоздадим, но если игрок офлайн остался в нашей команде
-        // без энергии — сразу снимем, чтобы не висел зря
         EntityPlayer p = (EntityPlayer) event.player;
         if ((SpatialAnchor.scanPlayerAnchors(p, null) & SpatialAnchor.FLAG_ACTIVE) == 0) {
             SpatialAnchorTeams.ensureRemoved(p);
+            SpatialAnchor.forceClearFlightState(p);
+        } else {
+            SpatialAnchor.syncFlightState(p, SpatialAnchor.hasActiveFlightAnchor(p));
         }
     }
 
@@ -292,9 +285,11 @@ public class SpatialAnchorEvents {
         // scoreboard глобальный, но на всякий — пересоздадим кэш для нового мира
         if ((SpatialAnchor.scanPlayerAnchors(p, null) & SpatialAnchor.FLAG_ACTIVE) == 0) {
             SpatialAnchorTeams.ensureRemoved(p);
+            SpatialAnchor.forceClearFlightState(p);
         } else {
             // форсим перепривязку к команде нового мира (getOrCreateTeam закэширует новый Scoreboard)
             SpatialAnchorTeams.ensureInTeam(p);
+            SpatialAnchor.syncFlightState(p, SpatialAnchor.hasActiveFlightAnchor(p));
         }
     }
 
@@ -305,6 +300,7 @@ public class SpatialAnchorEvents {
         if ((SpatialAnchor.scanPlayerAnchors(p, null) & SpatialAnchor.FLAG_ACTIVE) == 0) {
             SpatialAnchorTeams.ensureRemoved(p);
         }
+        SpatialAnchor.forceClearFlightState(p);
         UUID id = p.getUniqueID();
         PREV_POS.remove(id);
         PREV_MOTION.remove(id);

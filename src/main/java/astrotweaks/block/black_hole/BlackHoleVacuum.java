@@ -79,20 +79,22 @@ public final class BlackHoleVacuum {
         for (BlackHoleTileEntity bh : active) {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
             BlockPos p = bh.getPos();
-            if (!world.isBlockLoaded(p)) continue;
-            // Stale-экземпляр после выгрузки чанка — как в BlackHoleWorldRenderer.
-            TileEntity current = world.getTileEntity(p);
-            if (current != null && current != bh) continue;
-
             double m = bh.getMass();
             double dx = (p.getX() + 0.5) - x;
             double dy = (p.getY() + 0.5) - y;
             double dz = (p.getZ() + 0.5) - z;
             double distSq = dx * dx + dy * dy + dz * dz;
-            // Быстрый выход: буст максимум x10 от сырого G*m/distSq.
+            // Буст максимум x10 от сырого G*m/distSq — дальше вакуум невозможен.
+            // Проверяем ДО обращения к чанку: isBlockLoaded + getTileEntity — самые
+            // дорогие вызовы в цикле, который крутится каждый тик на каждого игрока.
             if (BlackHoleUtils.G * m / distSq * (1.0D + BlackHoleUtils.BOOST_MAX) <= BlackHoleUtils.SUFFOCATION_ACCEL) continue;
+            if (!world.isBlockLoaded(p)) continue;
+            // Stale-экземпляр после выгрузки чанка — как в BlackHoleWorldRenderer.
+            TileEntity current = world.getTileEntity(p);
+            if (current != null && current != bh) continue;
 
-            double accel = BlackHoleUtils.getAccelerationSqBoosted(m, distSq, BlackHoleUtils.getHorizonRadius(m), BlackHoleUtils.getBoostRadius(m));
+            double accel = BlackHoleUtils.getAccelerationSqBoosted(m, distSq,
+                    BlackHoleUtils.getHorizonRadius(m), BlackHoleUtils.getBoostRadius(m));
             if (accel > best) {
                 best = accel;
                 if (isVacuum(best)) return best; // дальше некуда

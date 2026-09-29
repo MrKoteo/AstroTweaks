@@ -2,6 +2,9 @@ package astrotweaks.item.SpatialAnchor;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
 
@@ -12,6 +15,7 @@ import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.PlayerCapabilities;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -50,11 +54,103 @@ public final class SpatialAnchor {
     public static final int FLAG_ACTIVE = 1;
     public static final int FLAG_FLIGHT = 2;
 
+    /** Флаги для проверки "есть активный якорь с включённым полётом". */
+    private static final int FLIGHT_MASK = FLAG_ACTIVE | FLAG_FLIGHT;
+
+    /** Ванильная скорость полёта (креатив/спектатор) — восстанавливается при снятии якорного полёта. */
+    public static final float VANILLA_FLY_SPEED = 0.05F;
+
+    /**
+     * Игроки, которым выдал полёт именно якорь.
+     * Позволяет не снимать полёт у креатива/спектатора и у игроков с
+     * allowFlying от прав/других модов, но при этом гасить именно наш полёт.
+     */
+    private static final Set<UUID> FLIGHT_GRANTED = ConcurrentHashMap.newKeySet();
+
     public static final Item SPATIAL_ANCHOR = new ItemCustom()
             .setRegistryName("astrotweaks", "spatial_anchor")
             .setUnlocalizedName("spatial_anchor");
 
     private SpatialAnchor() {}
+
+    // ------------------------------------------------------------------
+    // Полётные способности
+    // ------------------------------------------------------------------
+
+    /** Есть ли у игрока активный (с энергией, включённый) якорь с включённым режимом полёта. */
+    public static boolean hasActiveFlightAnchor(EntityPlayer player) {
+        return player != null && (scanPlayerAnchors(player, null) & FLIGHT_MASK) == FLIGHT_MASK;
+    }
+
+    /**
+     * Единая точка синхронизации полётных способностей с состоянием якорей.
+     * Вызывается каждый тик и при переключении якоря, поэтому полёт корректно
+     * снимается при любом изменении состояния (выключен якорь, села энергия,
+     * якорь выброшен/сломан) и корректно возвращается при включении.
+     *
+     * <p>Креатив/спектатор не трогаем — у них полёт и скорость свои.
+     *
+     * @param wantFlight нужен ли якорный полёт прямо сейчас
+     */
+    public static void syncFlightState(EntityPlayer player, boolean wantFlight) {
+        if (player == null || player.world == null || player.world.isRemote) return;
+        PlayerCapabilities cap = player.capabilities;
+        if (cap == null) return;
+
+        UUID id = player.getUniqueID();
+        boolean changed = false;
+
+        if (wantFlight) {
+            if (cap.isCreativeMode || player.isSpectator()) return; // ванильный полёт не наш
+            // Регистрируем игрока как "полёт выдан якорем", даже если allowFlying
+            // уже был true (например, восстановлен из NBT при входе) —
+            // иначе позже мы не сможем корректно его снять.
+            FLIGHT_GRANTED.add(id);
+            if (!cap.allowFlying) {
+                cap.allowFlying = true;
+                changed = true;
+            }
+            float target = (player.isSprinting() ? 0.10F : 0.07F) * 0.5F;
+            if (Math.abs(cap.getFlySpeed() - target) > 0.001F) {
+                cap.setFlySpeed(target);
+                changed = true;
+            }
+        } else {
+            boolean ours = FLIGHT_GRANTED.remove(id);
+            if (ours && !cap.isCreativeMode && !player.isSpectator()) {
+                if (cap.allowFlying) { cap.allowFlying = false; changed = true; }
+                if (cap.isFlying) { cap.isFlying = false; changed = true; }
+                if (cap.getFlySpeed() != VANILLA_FLY_SPEED) {
+                    cap.setFlySpeed(VANILLA_FLY_SPEED);
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) player.sendPlayerAbilities();
+    }
+
+    /**
+     * Полный сброс якорного полёта (логин/смена измерения/респавн/выход).
+     * Для не-креатива снимает и allowFlying, и isFlying — это гарантирует,
+     * что игрок не останется «висеть в воздухе» после входа с сохранённым flying:1b.
+     */
+    public static void forceClearFlightState(EntityPlayer player) {
+        if (player == null) return;
+        FLIGHT_GRANTED.remove(player.getUniqueID());
+        syncFlightState(player, false);
+        PlayerCapabilities cap = player.capabilities;
+        if (cap == null || cap.isCreativeMode || player.isSpectator()) return;
+        boolean changed = false;
+        if (cap.isFlying) { cap.isFlying = false; changed = true; }
+        if (cap.getFlySpeed() != VANILLA_FLY_SPEED) { cap.setFlySpeed(VANILLA_FLY_SPEED); changed = true; }
+        if (changed && player.world != null && !player.world.isRemote) player.sendPlayerAbilities();
+    }
+
+    /** Чистка трекинга при выходе игрока (без обращения к миру). */
+    public static void forgetFlightTracking(EntityPlayer player) {
+        if (player != null) FLIGHT_GRANTED.remove(player.getUniqueID());
+    }
 
     // ------------------------------------------------------------------
     // Energy ops
@@ -344,34 +440,15 @@ public final class SpatialAnchor {
                     setFlightEnabled(stack, !cur);
                     String msgKey = !cur ? "item.spatial_anchor.flight_enable" : "item.spatial_anchor.flight_disable";
                     player.sendStatusMessage(new TextComponentString(new TextComponentTranslation(msgKey).getFormattedText()), true);
-                    if (!cur) {
-                        // при включении полёта сразу даём разрешение, если есть энергия
-                        if (hasActiveAnchor(player) && getTotalEnergy(player) >= COST_FLIGHT) {
-                            player.capabilities.allowFlying = true;
-                            player.sendPlayerAbilities();
-                        }
-                    } else {
-                        // выкл — снимаем полёт если не креатив
-                        if (!player.capabilities.isCreativeMode) {
-                            player.capabilities.allowFlying = false;
-                            player.capabilities.isFlying = false;
-                            player.sendPlayerAbilities();
-                        }
-                    }
                 } else {
                     boolean cur = isEnabled(stack);
                     setEnabled(stack, !cur);
                     String msgKey = !cur ? "item.spatial_anchor.toggle_on" : "item.spatial_anchor.toggle_off";
                     player.sendStatusMessage(new TextComponentString(new TextComponentTranslation(msgKey).getFormattedText()), true);
-                    if (!cur && isFlightEnabled(stack)) {
-                        // выключили якорь — гасим полёт
-                        if (!player.capabilities.isCreativeMode) {
-                            player.capabilities.allowFlying = false;
-                            player.capabilities.isFlying = false;
-                            player.sendPlayerAbilities();
-                        }
-                    }
                 }
+                // Единая синхронизация: полёт снимается/возвращается по фактическому
+                // состоянию всех якорей (учитывая несколько якорей и энергию).
+                syncFlightState(player, hasActiveFlightAnchor(player));
             }
             return new ActionResult<>(EnumActionResult.SUCCESS, stack);
         }

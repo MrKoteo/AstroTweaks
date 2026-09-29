@@ -68,15 +68,30 @@ public final class BlackHoleUtils {
     public static final double BOOST_MAX = 9.0D; // 10x at horizon (1+9)
     public static final double BOOST_POW = 3.0D; // cubic: flat far, sharp near horizon
 
-    /** Мемоизация для частых pow — single-slot, single-thread (майн single thread) */
-    private static double lastHorizonMassBits = Double.NaN;
-    private static double lastHorizonR = 0;
-    private static double lastHaloHorizon = Double.NaN;
-    private static double lastHaloThickness = 0;
-    private static double lastEvapMass = Double.NaN;
-    private static double lastEvapLoss = 0;
-    private static double lastBoostMassBits = Double.NaN;
-    private static double lastBoostR = 0;
+    /**
+     * Мемоизация для частых pow — single-slot.
+     *
+     * <p>Поля volatile НЕ для скорости (на x86 чтение volatile бесплатно), а
+     * против гонки: в одиночной игре серверный и клиентский тики идут разными
+     * потоками в одном JVM и пишут в эти же статические поля. Запись/чтение
+     * {@code double}/{@code long} не атомарны по JMM, поэтому без volatile
+     * возможен torn read. Значения при этом всегда «валидные» (результат для
+     * какой-то массы) — гонка влияла только на попадание в кэш, не на числа.
+     *
+     * <p>Single-slot (а не карта) сознательно: при 2+ дырах он всё равно
+     * промахивается на каждую, но тогда стоимость — лишь {@code Math.pow}.
+     * Дорогие вызовы (pow) вынесены в точки, где масса уже известна: см.
+     * {@code BlackHoleTileEntity#getRenderHorizon} и horizon/boost, которые
+     * {@code tickEntities}/{@code processScan} считают раз на тик.
+     */
+    private static volatile double lastHorizonMassBits = Double.NaN;
+    private static volatile double lastHorizonR = 0;
+    private static volatile double lastHaloHorizon = Double.NaN;
+    private static volatile double lastHaloThickness = 0;
+    private static volatile double lastEvapMass = Double.NaN;
+    private static volatile double lastEvapLoss = 0;
+    private static volatile double lastBoostMassBits = Double.NaN;
+    private static volatile double lastBoostR = 0;
 
     /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
     public static double getHaloThickness(double horizon) {
@@ -94,12 +109,9 @@ public final class BlackHoleUtils {
 
     /** Blocks per block-eat cycle (every 5 ticks). Configurable */
     //public static int BLOCKS_PER_TICK = 16;
-    /** Entity blacklist for capture */
-    public static final java.util.Set<Class<? extends net.minecraft.entity.Entity>> ENTITY_BLACKLIST = new java.util.HashSet<>();
-    static {
-        ENTITY_BLACKLIST.add(net.minecraft.entity.passive.EntitySquid.class);
-        ENTITY_BLACKLIST.add(net.minecraft.entity.boss.EntityDragon.class);
-    }
+    // Чёрный список сущностей (кальмар и дракон) переехал в BlackHoleTileEntity
+    // прямой проверкой instanceof: цикл с Class.isInstance на каждую сущность
+    // в кубе каждый тик стоил дороже самой проверки, а классов там всего два.
 
     /** Default mass for newly placed black hole */
     public static final double DEFAULT_MASS = 20000.0D;
@@ -176,7 +188,7 @@ public final class BlackHoleUtils {
     // Adaptive sync / NBT интервалы — чем больше масса, тем реже обновления
     // =================================================================
     /** Минимальный интервал синхронизации с клиентом (тики) — для крошечных BH, где испарение заметно */
-    public static final int SYNC_TICKS_MIN = 1;
+    public static final int SYNC_TICKS_MIN = 2;
     /** Максимальный интервал синхронизации — для гигантов, где горизонт почти не меняется */
     public static final int SYNC_TICKS_MAX = 50;
     /** Минимальный интервал markDirty / сохранения NBT */

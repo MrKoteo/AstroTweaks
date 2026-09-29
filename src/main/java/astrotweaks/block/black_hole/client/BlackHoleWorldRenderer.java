@@ -22,6 +22,14 @@ import org.lwjgl.opengl.GL11;
 @Mod.EventBusSubscriber(modid = "astrotweaks", value = Side.CLIENT)
 public final class BlackHoleWorldRenderer {
 
+    /**
+     * Валидация TE меняется раз в тик (выгрузка чанка / подмена TE возможны только
+     * во время тика мира), а рендер идёт каждый кадр. Кэшируем «перепроверить» по
+     * времени мира, чтобы не делать getTileEntity+isBlockLoaded 60 раз в секунду.
+     */
+    private static long lastValidateTick = Long.MIN_VALUE;
+    private static World lastValidateWorld;
+
     @SubscribeEvent
     public static void onRenderWorldLast(RenderWorldLastEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
@@ -39,6 +47,13 @@ public final class BlackHoleWorldRenderer {
         double loadedRange = (rd + 2) * 16.0;
         double loadedRangeSq = loadedRange * loadedRange;
 
+        long worldTime = w.getTotalWorldTime();
+        boolean revalidate = (worldTime != lastValidateTick || w != lastValidateWorld);
+        if (revalidate) {
+            lastValidateTick = worldTime;
+            lastValidateWorld = w;
+        }
+
         // GL-состояние захватываем один раз за кадр, а не на каждую BH:
         // внутри кадра оно не меняется между итерациями (ядро рендера
         // идемпотентно выставляет те же флаги), восстановление — один раз в finally.
@@ -54,18 +69,22 @@ public final class BlackHoleWorldRenderer {
             for (BlackHoleTileEntity bh : active) {
                 if (bh.isInvalid() || bh.getWorld() != w) continue;
                 BlockPos p = bh.getPos();
-                // Stale-экземпляр после выгрузки чанка: позицию занял другой TE —
-                // не рисуем призрака. Null (переходное состояние) — рисуем как раньше.
-                TileEntity current = w.getTileEntity(p);
-                if (current != null && current != bh) continue;
-                // Только в прогруженных чанках для этого игрока
-                if (!w.isBlockLoaded(p)) continue;
-                // Доп. проверка по дистанции прогрузки — isBlockLoaded может держать чанк чуть дольше
+                // Порядок от дешёвого к дорогому: дистанция (только арифметика) ->
+                // загружен ли чанк -> поиск TE в чанке. Все три — чистые фильтры,
+                // порядок на результат не влияет.
                 double dx = (p.getX() + 0.5) - px;
                 double dy = (p.getY() + 0.5) - py;
                 double dz = (p.getZ() + 0.5) - pz;
                 double distSq = dx * dx + dy * dy + dz * dz;
+                // Доп. проверка по дистанции загрузки — isBlockLoaded может держать чанк чуть дольше
                 if (distSq > loadedRangeSq) continue;
+                if (!w.isBlockLoaded(p)) continue;
+                if (revalidate) {
+                    // Stale-экземпляр после выгрузки чанка: позицию занял другой TE —
+                    // не рисуем призрака. Null (переходное состояние) — рисуем как раньше.
+                    TileEntity current = w.getTileEntity(p);
+                    if (current != null && current != bh) continue;
+                }
 
                 // Рендерим на любой дистанции прогрузки единым путём (без фантомного хенд-оффа 64)
                 double x = p.getX() - px;
