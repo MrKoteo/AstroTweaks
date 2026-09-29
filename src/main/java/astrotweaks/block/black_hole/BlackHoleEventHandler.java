@@ -1,6 +1,8 @@
 package astrotweaks.block.black_hole;
 
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -160,5 +162,23 @@ public class BlackHoleEventHandler {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
             bh.getRegionManager().onChunkLoaded(chunk);
         }
+    }
+
+    /**
+     * Вакуум: расход кислорода в области сильной гравитации, только игроки.
+     *
+     * <p>Фаза END обязательна. Forge стреляет ею в конце
+     * {@code EntityPlayer.onUpdate()} — уже ПОСЛЕ того, как
+     * {@code EntityLivingBase.onUpdate()} сбросил воздух в 300. В START
+     * (или тем более в tickEntities) сброса ещё не было, и мы бы писали
+     * значение, которое ванилла тут же затёрла бы следующим кадром.
+     */
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        EntityPlayer player = event.player;
+        if (player == null || player.world == null || player.world.isRemote) return;
+        if (!(player instanceof EntityPlayerMP)) return;
+        BlackHoleVacuum.tick((EntityPlayerMP) player);
     }
 }

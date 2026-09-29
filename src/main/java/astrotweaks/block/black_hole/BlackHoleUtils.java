@@ -44,7 +44,13 @@ public final class BlackHoleUtils {
     /** Game gravity constant tuned so mass=1000 => gravity range ~22 blocks at threshold 0.001 */
     public static final double G = 5.0e-4;
     /** Minimal displacement per tick to be applied */
-    public static final double MIN_ACCEL = 0.001D;
+    public static final double MIN_ACCEL = 0.002D;
+
+    /**
+     * Порог ускорения, выше которого окрестность дыры считается вакуумом:
+     * кислород заканчивается подобно как в воде
+     */
+    public static final double SUFFOCATION_ACCEL = 0.4D;
     /** Hard cap for gravity scan box (per user req) */
     public static final double MAX_GRAVITY_RANGE = 256.0D;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
@@ -52,8 +58,8 @@ public final class BlackHoleUtils {
 
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
-    public static final double H_SCALE = 0.022D;
-    public static final double H_EXP = 0.34D;
+    public static final double H_SCALE = 0.021D;
+    public static final double H_EXP = 0.35D;
 
     // Near-horizon boost: Rb(m) = m^{0.30103}/16 = 2*(m/1e5)^{0.30103}
     // 1e5->2, 1e6->4, 1e7->8, 1e8->16, 1e9->32 (continuous)
@@ -147,8 +153,24 @@ public final class BlackHoleUtils {
     public static final double MASS_PER_ENTITY = 20.0D;
     public static final double MASS_PER_XP = 0.5D;
     public static final double MASS_PER_PLAYER = 50.0D;
-    /** Mass gained per liquid block eaten. Cheap — liquids have no structural cost. */
-    public static final double MASS_PER_LIQUID = 0.5D;
+    /** Mass gained per liquid eaten. */
+    public static final double MASS_PER_LIQUID = 1.0D;
+
+    // =================================================================
+    // Кислород (вакуум у дыры) — значения ванильного EntityLivingBase
+    // =================================================================
+    /** Полный запас воздуха (data-param AIR у Entity, как в ванилле). */
+    //public static final int MAX_AIR = 300;
+    /** Воздух кончился: EntityLivingBase на этом пороге делает setAir(0) + урон. */
+    public static final int DROWN_AIR = -20;
+
+    /** Радиус вакуума (точка, где accel == SUFFOCATION_ACCEL) для массы mass. */
+    public static double getVacuumRadius(double mass) {
+        if (mass <= 0) return 0;
+        double r = Math.sqrt(G * mass / SUFFOCATION_ACCEL);
+        if (r > MAX_GRAVITY_RANGE) r = MAX_GRAVITY_RANGE;
+        return r;
+    }
 
     // =================================================================
     // Adaptive sync / NBT интервалы — чем больше масса, тем реже обновления
@@ -181,7 +203,7 @@ public final class BlackHoleUtils {
         if (mass < 100000D) {
             double t = (log - LOG_MIN) / (LOG_MID - LOG_MIN);
             if (t < 0) t = 0; if (t > 1) t = 1;
-            // 1 .. 8 тиков для 0.5..100k — дно 1-2 тика реально достигается на 20k
+            // 1 .. 8 тиков для 0.5..100k — дно 1-2 тика достигается на 20k
             return (int) Math.round(SYNC_TICKS_MIN + t * (8 - SYNC_TICKS_MIN));
         } else {
             double t = (log - LOG_MID) / (LOG_MAX - LOG_MID);
@@ -241,7 +263,7 @@ public final class BlackHoleUtils {
 
     /** Radius where accel >= hardness threshold (dynamic) */
     public static double getBlockEatRadiusByHardness(double mass, double hardness) {
-        if (mass <= 0)  return 0;
+        //if (mass <= 0)  return 0;
         if (hardness < 0.05) hardness = 0.1; // zero-hardness ->0.1 per req
         double r = Math.sqrt(G * mass / hardness);
         double h = getHorizonRadius(mass);
@@ -278,7 +300,7 @@ public final class BlackHoleUtils {
 
     /** Boost radius Rb(m) — distance from horizon where extra pull starts. */
     public static double getBoostRadius(double mass) {
-        if (!(mass > 0)) return 0;
+        //if (mass < 0) return 0;
         if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastBoostMassBits)) return lastBoostR;
         double r = Math.pow(mass, BOOST_EXP) * BOOST_INV16;
         if (r < 0) r = 0;

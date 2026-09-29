@@ -687,14 +687,15 @@ public class BlackHoleRegionManager {
     // =================================================================
     // Helpers
     // =================================================================
-    private boolean canEatSq(double bdistSq, double checkHardness, double curMass, double horizonPlusSq) {
-        if (bdistSq <= horizonPlusSq) return true;
-        return BlackHoleUtils.getAccelerationSq(curMass, bdistSq) >= checkHardness;
-    }
+    //private boolean canEatSq(double bdistSq, double checkHardness, double curMass, double horizonPlusSq) {
+    //    if (bdistSq <= horizonPlusSq) return true;
+    //    return BlackHoleUtils.getAccelerationSq(curMass, bdistSq) >= checkHardness;
+    //}
 
-    private boolean canEatSqBoosted(double bdistSq, double checkHardness, double curMass,
-                                     double horizonPlusSq, double horizonSq, double boostOuterSq,
-                                     double boostOuter, double boostRadius, double horizon) {
+    private final IBlockState AIR = Blocks.AIR.getDefaultState();
+
+    private boolean canEatSqBoosted(double bdistSq, double checkHardness, double curMass, double horizonPlusSq, double horizonSq, double boostOuterSq,
+                double boostOuter, double boostRadius, double horizon) {
         if (bdistSq <= horizonPlusSq) return true;
         double accel = BlackHoleUtils.getAccelerationSq(curMass, bdistSq);
         if (boostRadius > 0 && bdistSq > horizonSq && bdistSq < boostOuterSq) {
@@ -706,7 +707,7 @@ public class BlackHoleRegionManager {
         return accel >= checkHardness;
     }
     private void eat(World world, BlockPos bp, boolean liquid) {
-        if (liquid) world.setBlockState(bp, Blocks.AIR.getDefaultState(), 2);
+        if (liquid) world.setBlockState(bp, AIR, 2);
         else world.setBlockToAir(bp);
     }
 

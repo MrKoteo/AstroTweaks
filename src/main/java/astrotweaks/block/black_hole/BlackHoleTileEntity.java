@@ -1,7 +1,6 @@
 package astrotweaks.block.black_hole;
 
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
@@ -336,20 +335,11 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             }
             boolean insideHorizon = dist <= horizon;
 
-            // --- Suffocation (applied BEFORE horizon block, so guaranteed inside) ---
-            // Threshold lowered 0.5 -> 0.4 per request.
-            // Inside horizon -> always true for any living entity. Creative /
-            // spectator players were filtered out above, so gm 0/2 are covered.
-            if (e instanceof EntityLivingBase && (insideHorizon || accel > 0.4)) {
-                EntityLivingBase living = (EntityLivingBase) e;
-                // ~1.5 air units per real tick, scaled by stride so faster/slower
-                // tick rates give the same effective drain rate.
-                int airDelta = (int) Math.max(1, Math.round(1.5 * stride));
-                int air = living.getAir() - airDelta;
-                if (air < -20) { air = 0; living.attackEntityFrom(DamageSource.DROWN, 1.0F); }
-                living.setAir(air);
-                if (e.isDead) continue;
-            }
+            // --- Вакуум (кислород) НЕ здесь ---
+            // EntityLivingBase.onUpdate() сбрасывает воздух в 300 в начале
+            // тика игрока, а TE тикают после — любой дренаж отсюда читал бы
+            // ровно 300. Поэтому он живёт в BlackHoleEventHandler.onPlayerTick
+            // (TickEvent.PlayerTickEvent.END, уже после сброса).
 
             // --- Horizon absorption ---
             if (insideHorizon) {

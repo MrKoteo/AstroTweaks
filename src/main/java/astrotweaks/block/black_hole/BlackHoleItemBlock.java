@@ -1,7 +1,6 @@
 package astrotweaks.block.black_hole;
 
 import net.minecraft.block.Block;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
@@ -42,7 +41,6 @@ public class BlackHoleItemBlock extends ItemBlock {
         }
         tooltip.add(line1);
         tooltip.add(line2);
-        tooltip.add(TextFormatting.DARK_PURPLE + "Sneak+RClick on block for debug");
     }
 
     @Override

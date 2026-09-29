@@ -1,6 +1,5 @@
 package astrotweaks.block.black_hole;
 
-import astrotweaks.creativetab.ATCreativeTabs;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
@@ -53,7 +52,7 @@ public class BlackHoleBlock extends Block {
 
     @Nullable
     @Override public AxisAlignedBB getCollisionBoundingBox(IBlockState s, IBlockAccess w, BlockPos p) { return NULL_AABB; }
-    @Override public boolean isReplaceable(IBlockAccess w, BlockPos p) { return false; }
+    //@Override public boolean isReplaceable(IBlockAccess w, BlockPos p) { return false; }
 
     @Override public boolean hasTileEntity(IBlockState s) { return true; }
     @Override public TileEntity createTileEntity(World w, IBlockState s) { return new BlackHoleTileEntity(); }
@@ -93,7 +92,8 @@ public class BlackHoleBlock extends Block {
                 double m = ((BlackHoleTileEntity) te).getMass();
                 double rH = BlackHoleUtils.getHorizonRadius(m);
                 double rG = BlackHoleUtils.getGravityRange(m);
-                player.sendMessage(new net.minecraft.util.text.TextComponentString(String.format("BlackHole mass=%.1f horizon=%.2f gravRange=%.2f", m, rH, rG)));
+                double rV = BlackHoleUtils.getVacuumRadius(m);
+                player.sendMessage(new net.minecraft.util.text.TextComponentString(String.format("BlackHole mass=%.1f horizon=%.2f gravRange=%.2f vacuum=%.2f", m, rH, rG, rV)));
             }
             return true;
         }

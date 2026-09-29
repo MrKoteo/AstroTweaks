@@ -56,9 +56,5 @@ net/minecraftforge
 libs/SimpleDifficulty-SDOE
 
 
-
-
 libs/RTGC-1.0.7.jar
-libs/AE2Enhanced.jar
-src/main/java/astrotweaks/block/black_hole/Пример assets.astrotweaks.shaders/black_hole.frag
-src/main/java/astrotweaks/block/black_hole/Пример assets.astrotweaks.shaders/black_hole.vert
+
