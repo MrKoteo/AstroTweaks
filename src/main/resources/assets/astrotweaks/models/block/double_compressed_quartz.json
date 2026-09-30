@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/compresseduartz2",
-    "particle": "astrotweaks:blocks/compresseduartz2"
+    "all": "astrotweaks:blocks/compresseduartz2"
   }
 }

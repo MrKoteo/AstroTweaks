@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/deepslate_emerald_ore",
-    "particle": "astrotweaks:blocks/deepslate_emerald_ore"
+    "all": "astrotweaks:blocks/deepslate_emerald_ore"
   }
 }

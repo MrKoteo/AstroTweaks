@@ -55,11 +55,11 @@ public class SpatialAnchorEvents {
 
         int flags = SpatialAnchor.scanPlayerAnchors(player, null);
         if ((flags & SpatialAnchor.FLAG_ACTIVE) == 0) return;
-        if ((flags & SpatialAnchor.FLAG_FLIGHT) != 0) {
+        //if ((flags & SpatialAnchor.FLAG_FLIGHT) != 0) {
             // В полёте COST_FLIGHT уже покрывает всё — блокируем без доп. списания
-            event.setCanceled(true);
-            return;
-        }
+        //    event.setCanceled(true);
+        //    return;
+        //}
         if (SpatialAnchor.tryConsume(player, SpatialAnchor.COST_KNOCKBACK)) {
             event.setCanceled(true);
         }
@@ -125,8 +125,6 @@ public class SpatialAnchorEvents {
         m[0] = player.motionX; m[1] = player.motionY; m[2] = player.motionZ;
 
         // Синхронизируем allowFlying/flySpeed с состоянием якорей.
-        // Снятие полёта здесь же чинит «не могу плыть» (vanilla при isFlying=true
-        // не применяет водную физику — игрок просто тонет).
         SpatialAnchor.syncFlightState(player, (flags & SpatialAnchor.FLAG_FLIGHT) != 0);
     }
 
@@ -180,7 +178,7 @@ public class SpatialAnchorEvents {
 
 
     // ------------------------------------------------------------------
-    // Коллизии через Team — оптимизированно
+    // Коллизии через Team
     // ------------------------------------------------------------------
     private void updateCollisionTeam(EntityPlayer player) {
         // В полёте этот метод не вызывается (return выше), здесь только обычный режим
@@ -207,7 +205,7 @@ public class SpatialAnchorEvents {
         }
         player.fallDistance = 0;
 
-        float walkSpeed = player.isSprinting() ? 0.10F : 0.07F;
+        float walkSpeed = 0.07F; // player.isSprinting() ? 0.10F : 0.07F;
         float fwd = player.moveForward;
         float strafe = player.moveStrafing;
         boolean jump = isJumping(player);
@@ -252,7 +250,7 @@ public class SpatialAnchorEvents {
     }
 
     // ------------------------------------------------------------------
-    // Logout / dimension — корректно снимаем команду и чистим кэши
+    // Logout / dimension — снимаем команду и чистим кэши
     // ------------------------------------------------------------------
     @SubscribeEvent
     public void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
@@ -282,7 +280,6 @@ public class SpatialAnchorEvents {
     public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.player.world.isRemote) return;
         EntityPlayer p = (EntityPlayer) event.player;
-        // scoreboard глобальный, но на всякий — пересоздадим кэш для нового мира
         if ((SpatialAnchor.scanPlayerAnchors(p, null) & SpatialAnchor.FLAG_ACTIVE) == 0) {
             SpatialAnchorTeams.ensureRemoved(p);
             SpatialAnchor.forceClearFlightState(p);
@@ -316,8 +313,8 @@ public class SpatialAnchorEvents {
     }
 
     private static boolean isColliding(EntityPlayer player) {
-        // Лёгкий скан — только pushable сущности рядом (0.45×0.05×0.45), без аллокаций вне цикла
-        AxisAlignedBB aabb = player.getEntityBoundingBox().grow(0.45, 0.05, 0.45);
+        // Лёгкий скан — только pushable сущности рядом, без аллокаций вне цикла
+        AxisAlignedBB aabb = player.getEntityBoundingBox().grow(0.4, 0.05, 0.4);
         List<Entity> list = player.world.getEntitiesWithinAABBExcludingEntity(player, aabb);
         for (int i = 0, n = list.size(); i < n; i++) {
             Entity e = list.get(i);

@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/mossy_stonebrick_cracked",
-    "particle": "astrotweaks:blocks/mossy_stonebrick_cracked"
+    "all": "astrotweaks:blocks/mossy_stonebrick_cracked"
   }
 }

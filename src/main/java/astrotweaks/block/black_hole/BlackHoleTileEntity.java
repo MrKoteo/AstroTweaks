@@ -413,25 +413,50 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
                 } catch (Exception ignored) {}
             }
 
-            // --- Motion ---
-            double maxAccel = Math.min(accel, dist * 0.45) * stride;
-            if (maxAccel > 5.0) maxAccel = 5.0;
+            // --- Motion (все оси XYZ, та же сила в жидкости и в воздухе) ---
+            // Пловца НЕЛЬЗЯ дёргать абсолютным SPacketEntityVelocity вообще:
+            // сервер пешего игрока не знает его прыжок/гребок (setEntityActionState
+            // применяется только верхом), поэтому серверный motion — тонущий,
+            // а клиентский — плывущий. Любой абсолютный пакет каждый тик сносит
+            // swim-импульс воды (+0.04 вверх) — всплыть нельзя при любой силе
+            // и любом положении BH. Путей такого пакета ДВА, закрываем оба:
+            //  1) прямой sendPacket ниже;
+            //  2) EntityTrackerEntry.updatePlayerEntities: при velocityChanged=true
+            //     шлёт sendToTrackingAndSelf(SPacketEntityVelocity) — т.е. себе же.
+            // Притяжение при этом сохраняется: серверная позиция всё равно
+            // дрейфует к дыре (позиционные коррекции), наблюдатели видят дрейф
+            // через позиционные пакеты трекера, а себе игрок тянется локально
+            // до ванильной обработки воды (BlackHoleGravityClientHandler).
+            // На сервере игроки всегда EntityPlayerMP; проверка уже, чем по EntityPlayer.
+            boolean inLiquid = (e instanceof EntityPlayerMP) && BlackHoleUtils.isInLiquid(e);
+            // Верхом сервер ввод знает — там пакеты безвредны, поведение старое.
+            boolean suppressVelocity = inLiquid && !e.isRiding();
+
+            double maxAccel = Math.min(accel, dist * BlackHoleUtils.DIST_PULL_CAP_FACTOR) * stride;
+            if (maxAccel > BlackHoleUtils.MAX_ACCEL_PER_TICK) maxAccel = BlackHoleUtils.MAX_ACCEL_PER_TICK;
 
             double nx = dx / dist, ny = dy / dist, nz = dz / dist;
-            e.motionX += nx * maxAccel * 0.35;
-            e.motionY += ny * maxAccel * 0.35;
-            e.motionZ += nz * maxAccel * 0.35;
+            e.motionX += nx * maxAccel * BlackHoleUtils.MOTION_FACTOR;
+            e.motionY += ny * maxAccel * BlackHoleUtils.MOTION_FACTOR;
+            e.motionZ += nz * maxAccel * BlackHoleUtils.MOTION_FACTOR;
 
-            double speed = Math.sqrt(e.motionX*e.motionX + e.motionY*e.motionY + e.motionZ*e.motionZ);
-            double maxSpeed = 4.5;
-            if (speed > maxSpeed) {
-                double s = maxSpeed / speed;
+            // Клэмп через квадрат: sqrt только когда потолок реально пробит.
+            // Условие speedSq > MAX^2 эквивалентно speed > MAX (неотрицательные),
+            // итог бит-в-бит тот же, корень в частом случае не считается.
+            double speedSq = e.motionX*e.motionX + e.motionY*e.motionY + e.motionZ*e.motionZ;
+            if (speedSq > BlackHoleUtils.MAX_SPEED_SQ) {
+                double s = BlackHoleUtils.MAX_SPEED / Math.sqrt(speedSq);
                 e.motionX *= s; e.motionY *= s; e.motionZ *= s;
             }
             e.fallDistance = 0;
-            e.velocityChanged = true;
+            // Флаг НЕ ставим пловцу: иначе трекер будет слать абсолютную скорость
+            // ему же каждый тик (путь 2 выше). Флаг только читается трекером,
+            // чужие причины его выставить не трогаем (не сбрасываем).
+            if (!suppressVelocity) {
+                e.velocityChanged = true;
+            }
 
-            if (e instanceof EntityPlayerMP) {
+            if (e instanceof EntityPlayerMP && !suppressVelocity) {
                 // Players aren't covered by vanilla entity velocity tracking, and
                 // the local client doesn't interpolate server-set motion the way
                 // it does for remote entities. Push every processed tick.

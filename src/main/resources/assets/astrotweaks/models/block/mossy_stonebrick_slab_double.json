@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "minecraft:blocks/stonebrick_mossy",
-    "particle": "minecraft:blocks/stonebrick_mossy"
+    "all": "minecraft:blocks/stonebrick_mossy"
   }
 }

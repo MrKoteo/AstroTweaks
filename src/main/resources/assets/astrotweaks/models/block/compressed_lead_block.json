@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/compressed_block_lead",
-    "particle": "astrotweaks:blocks/compressed_block_lead"
+    "all": "astrotweaks:blocks/compressed_block_lead"
   }
 }

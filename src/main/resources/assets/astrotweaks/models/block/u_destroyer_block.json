@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/universal_destroyer_block",
-    "particle": "astrotweaks:blocks/universal_destroyer_block"
+    "all": "astrotweaks:blocks/universal_destroyer_block"
   }
 }

@@ -2,7 +2,6 @@
   "parent": "astrotweaks:custom/heavy_mine",
   "textures": {
     "all": "astrotweaks:blocks/heavy_mine",
-    "particle": "astrotweaks:blocks/heavy_mine",
-    "heavy_mine": "astrotweaks:blocks/heavy_mine"
+    "particle": "astrotweaks:blocks/heavy_mine"
   }
 }

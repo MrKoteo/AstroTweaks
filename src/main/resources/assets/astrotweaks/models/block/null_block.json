@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/nulltx",
-    "particle": "astrotweaks:blocks/nulltx"
+    "all": "astrotweaks:any/nulltx"
   }
 }

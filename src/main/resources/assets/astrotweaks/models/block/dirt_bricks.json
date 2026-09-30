@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/dirt_bricks",
-    "particle": "astrotweaks:blocks/dirt_bricks"
+    "all": "astrotweaks:blocks/dirt_bricks"
   }
 }

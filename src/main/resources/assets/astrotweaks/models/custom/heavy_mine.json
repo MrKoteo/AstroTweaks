@@ -34,22 +34,22 @@
       ],
       "faces": {
         "up": {
-          "texture": "#heavy_mine"
+          "texture": "#all"
         },
         "down": {
-          "texture": "#heavy_mine"
+          "texture": "#all"
         },
         "west": {
-          "texture": "#heavy_mine"
+          "texture": "#all"
         },
         "east": {
-          "texture": "#heavy_mine"
+          "texture": "#all"
         },
         "north": {
-          "texture": "#heavy_mine"
+          "texture": "#all"
         },
         "south": {
-          "texture": "#heavy_mine"
+          "texture": "#all"
         }
       }
     }

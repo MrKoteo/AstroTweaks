@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/quartz_ore_s",
-    "particle": "astrotweaks:blocks/quartz_ore_s"
+    "all": "astrotweaks:blocks/quartz_ore_s"
   }
 }

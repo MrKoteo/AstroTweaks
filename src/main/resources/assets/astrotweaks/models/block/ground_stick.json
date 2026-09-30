@@ -2,7 +2,6 @@
   "parent": "astrotweaks:custom/stick_block",
   "textures": {
     "all": "minecraft:blocks/log_oak",
-    "particle": "minecraft:blocks/log_oak",
-    "0": "minecraft:blocks/log_oak"
+    "particle": "minecraft:blocks/log_oak"
   }
 }

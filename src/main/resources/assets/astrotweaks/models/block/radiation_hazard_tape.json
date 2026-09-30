@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/radiation_hazard",
-    "particle": "astrotweaks:blocks/radiation_hazard"
+    "all": "astrotweaks:blocks/radiation_hazard"
   }
 }

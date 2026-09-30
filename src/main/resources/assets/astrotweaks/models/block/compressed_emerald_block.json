@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/compressed_emerald_block",
-    "particle": "astrotweaks:blocks/compressed_emerald_block"
+    "all": "astrotweaks:blocks/compressed_emerald_block"
   }
 }

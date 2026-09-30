@@ -100,14 +100,12 @@ public class BlackHoleTESR extends TileEntitySpecialRenderer<BlackHoleTileEntity
         GlStateManager.color(1, 1, 1, 1);
 
         BlackHoleShader sh = getShader();
-        long worldTime = te.getWorld() != null ? te.getWorld().getTotalWorldTime() : 0;
-        float time = (worldTime + partialTicks) * 0.05f;
 
         try {
             // --- Inner black horizon sphere (uMode=0 -> opaque black) ---
+            // Static: no rotation/animation of halos.
             if (sh != null) {
                 sh.use();
-                sh.setTime(time);
                 sh.setHorizon((float) horizon);
                 sh.setGravityRange((float) gravRange);
                 sh.setMass((float) mass);

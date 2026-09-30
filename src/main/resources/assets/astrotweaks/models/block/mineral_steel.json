@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/mineral_steel",
-    "particle": "astrotweaks:blocks/mineral_steel"
+    "all": "astrotweaks:blocks/mineral_steel"
   }
 }

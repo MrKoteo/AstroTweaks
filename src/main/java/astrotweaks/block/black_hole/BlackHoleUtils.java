@@ -1,6 +1,9 @@
 package astrotweaks.block.black_hole;
 
 import net.minecraft.block.material.Material;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.math.BlockPos;
 
 
 
@@ -45,6 +48,21 @@ public final class BlackHoleUtils {
     public static final double G = 5.0e-4;
     /** Minimal displacement per tick to be applied */
     public static final double MIN_ACCEL = 0.002D;
+
+    // =================================================================
+    // Применение тяги к движению сущностей (один набор на сервер и клиент,
+    // чтобы локальная тяга в жидкости совпадала с серверной по всем осям XYZ)
+    // =================================================================
+    /** Доля ускорения поля, уходящая в motion за тик (все оси XYZ). */
+    public static final double MOTION_FACTOR = 0.35D;
+    /** Потолок прироста скорости от тяги за тик (до MOTION_FACTOR). */
+    public static final double MAX_ACCEL_PER_TICK = 5.0D;
+    /** Потолок полной скорости сущности после тяги. */
+    public static final double MAX_SPEED = 4.5D;
+    /** Квадрат потолка скорости — клэмп без sqrt в частом случае (под потолком). */
+    public static final double MAX_SPEED_SQ = MAX_SPEED * MAX_SPEED;
+    /** Тяга не разгоняет быстрее, чем тело долетело бы до центра за ~2 тика. */
+    public static final double DIST_PULL_CAP_FACTOR = 0.45D;
 
     /**
      * Порог ускорения, выше которого окрестность дыры считается вакуумом:
@@ -369,6 +387,29 @@ public final class BlackHoleUtils {
         double t = (outer - dist) / boostRadius;
         double t3 = t * t * t;
         return accel * (1.0D + BOOST_MAX * t3);
+    }
+
+    /**
+     * Тело в жидкости (любой: ваниль + модовые). Hot path: сначала дешёвое
+     * чтение флага воды без аллокаций; иначе ОДИН getBlockState в нижней трети
+     * тела. Сознательно не используем {@code Entity.isInLava()}: в 1.12.2 это
+     * полный скан AABB по блокам ({@code isMaterialInBB}), а точечная проба
+     * покрывает те же игровые случаи (брод/плавание: нижняя часть тела в
+     * жидкости) за один lookup. Направление расхождения безопасное: в редком
+     * краевом случае ложный negative просто даёт старое поведение (пакеты),
+     * ложных positive проба не даёт.
+     * Вызывать только для игроков (их мало), а не для каждой сущности в кубе.
+     */
+    public static boolean isInLiquid(Entity e) {
+        if (e == null || e.world == null) return false;
+        if (e.isInWater()) return true;
+        try {
+            IBlockState st = e.world.getBlockState(new BlockPos(
+                    e.posX, e.posY + e.height * 0.3D, e.posZ));
+            return st.getMaterial().isLiquid();
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     /** Mass at which the horizon reaches radius r. Inverse of getHorizonRadius. */

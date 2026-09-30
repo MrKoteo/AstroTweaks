@@ -2,7 +2,6 @@
   "parent": "astrotweaks:custom/rock_flat",
   "textures": {
     "all": "minecraft:blocks/stone",
-    "particle": "minecraft:blocks/stone",
-    "texture": "minecraft:blocks/stone"
+    "particle": "minecraft:blocks/stone"
   }
 }

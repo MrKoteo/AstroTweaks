@@ -1,14 +1,8 @@
 package astrotweaks.block.black_hole.client;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,7 +13,6 @@ public class BlackHoleShader {
     private final Map<String, Integer> uniformCache = new HashMap<>();
 
     // Cached locations for the hot-path uniforms (no HashMap lookup per call).
-    private int locUTime = -2;
     private int locUHorizon = -2;
     private int locUGravityRange = -2;
     private int locUMass = -2;
@@ -86,11 +79,6 @@ public class BlackHoleShader {
         return loc(name);
     }
 
-    public void setTime(float v) {
-        locUTime = locDirect(locUTime, "uTime");
-        setUniform(locUTime, v);
-    }
-
     public void setHorizon(float v) {
         locUHorizon = locDirect(locUHorizon, "uHorizon");
         setUniform(locUHorizon, v);
@@ -115,21 +103,11 @@ public class BlackHoleShader {
         if (programId != 0) GL20.glDeleteProgram(programId);
     }
 
-    // Load from resource or fallback to embedded strings
+    // Single source of the shader code (was duplicated with resources/shaders files).
+    // Static version: no uTime animation, halos don't rotate/shimmer.
     public static BlackHoleShader loadOrCreate() {
-        String vert = null, frag = null;
         try {
-            ResourceLocation vLoc = new ResourceLocation("astrotweaks", "shaders/black_hole.vert");
-            ResourceLocation fLoc = new ResourceLocation("astrotweaks", "shaders/black_hole.frag");
-            InputStream vs = Minecraft.getMinecraft().getResourceManager().getResource(vLoc).getInputStream();
-            InputStream fs = Minecraft.getMinecraft().getResourceManager().getResource(fLoc).getInputStream();
-            vert = read(vs);
-            frag = read(fs);
-        } catch (Exception ignored) {}
-        if (vert == null) vert = EMBEDDED_VERT;
-        if (frag == null) frag = EMBEDDED_FRAG;
-        try {
-            return create(vert, frag);
+            return create(EMBEDDED_VERT, EMBEDDED_FRAG);
         } catch (Exception e) {
             System.err.println("[BlackHoleShader] failed to compile: " + e.getMessage());
             e.printStackTrace();
@@ -137,25 +115,15 @@ public class BlackHoleShader {
         }
     }
 
-    private static String read(InputStream is) throws Exception {
-        BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = br.readLine()) != null) sb.append(line).append("\n");
-        return sb.toString();
-    }
-
-    // Embedded fallback_shaders - GLSL 120 compatible
+    // Shaders - GLSL 120 compatible
     // NOTE: normal MUST be transformed to view space via gl_NormalMatrix.
-    // Comparing object-space normalize(vPos) with view-space viewDir was the
+    // Comparing object-space normal with view-space viewDir was the
     // cause of the North=black / South=brown direction-dependent bug.
     public static final String EMBEDDED_VERT =
             "#version 120\n" +
-            "varying vec3 vPos;\n" +
             "varying vec3 vView;\n" +
             "varying vec3 vNormal;\n" +
             "void main(){\n" +
-            "  vPos = gl_Vertex.xyz; \n" +
             "  vec4 viewPos = gl_ModelViewMatrix * gl_Vertex; \n" +
             "  vView = viewPos.xyz; \n" +
             "  vec3 nObj = normalize(gl_Vertex.xyz + vec3(0.0001, 0.0, 0.0));\n" +
@@ -165,10 +133,8 @@ public class BlackHoleShader {
 
     public static final String EMBEDDED_FRAG =
             "#version 120\n" +
-            "varying vec3 vPos;\n" +
             "varying vec3 vView;\n" +
             "varying vec3 vNormal;\n" +
-            "uniform float uTime;\n" +
             "uniform float uHorizon;\n" +
             "uniform float uGravityRange;\n" +
             "uniform float uMass;\n" +
@@ -183,24 +149,19 @@ public class BlackHoleShader {
             "    return;\n" +
             "  } else if (uMode < 1.5) {\n" +
             "    float alpha = pow(fresnel, 2.0);\n" +
-            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1);\n" +
-            "    alpha *= 0.44 * shimmer;\n" +
+            "    alpha *= 0.44;\n" +
             "    if (alpha < 0.003) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +
             "  } else if (uMode < 2.5) {\n" +
             "    float alpha = pow(fresnel, 2.0);\n" +
-            "    float ang = atan(vPos.z, vPos.x);\n" +
-            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 1.5);\n" +
-            "    alpha *= 0.24 * shimmer;\n" +
+            "    alpha *= 0.24;\n" +
             "    if (alpha < 0.002) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +
             "  } else {\n" +
             "    float alpha = pow(fresnel, 1.5);\n" +
-            "    float ang = atan(vPos.z, vPos.x);\n" +
-            "    float shimmer = 0.9 + 0.1 * sin(uTime * 1.1 + ang * 2.0 + 2.5);\n" +
-            "    alpha *= 0.17 * shimmer;\n" +
+            "    alpha *= 0.17;\n" +
             "    if (alpha < 0.0005) discard;\n" +
             "    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);\n" +
             "    return;\n" +

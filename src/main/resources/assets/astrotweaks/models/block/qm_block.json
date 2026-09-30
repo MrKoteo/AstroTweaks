@@ -1,7 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "astrotweaks:blocks/qm",
-    "particle": "astrotweaks:blocks/qm"
+    "all": "astrotweaks:blocks/qm"
   }
 }
