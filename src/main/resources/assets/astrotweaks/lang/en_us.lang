@@ -55,6 +55,8 @@ qts.no_tp_target=§cTeleportation to the target area is impossible!
 qts.no_changedim=§cMoving between dimensions is impossible  here!
 qts.tp_interrupted=§cTeleportation has been interrupted!
 
+sd.change_range=Dome range set to %s blocks
+
 ark.err.coords=§cError: coordinates must be numbers!
 ark.invalid_coords=§cError: invalid coordinates!
 ark.err.structure=§cError: Invalid structure!
@@ -558,6 +560,7 @@ tile.red_mushrooms.name=Red mushrooms
 tile.ruby_block.name=Ruby block
 tile.ruby_ore.name=Ruby ore
 tile.safety_zone_tape.name=Safety zone
+tile.spatial_dome.name=§dSpatial Dome
 tile.sugar_block.name=Sugar Block
 tile.technical_works_tape.name=Technical Works
 tile.triple_compressed_quartz.name=Triple compressed quartz

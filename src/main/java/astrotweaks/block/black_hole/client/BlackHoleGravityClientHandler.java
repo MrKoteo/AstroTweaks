@@ -54,6 +54,10 @@ public final class BlackHoleGravityClientHandler {
         double y = player.posY + player.height * 0.5D;
         double z = player.posZ;
 
+        // Spatial Dome: под куполом локальной тяги нет (сервер тоже не тянет).
+        // Проверка ДО цикла по дырам: один chunk-lookup вместо N.
+        if (astrotweaks.tech.sd.DomeManager.isProtected(world, x, y, z)) return;
+
         // Скан инвентаря якоря (~41 слот с NBT) — только если хоть одна дыра
         // в радиусе: обычное плавание вне зоны BH его вообще не платит.
         // Состояние якоря константно в пределах тика — проверяем один раз.
@@ -64,6 +68,8 @@ public final class BlackHoleGravityClientHandler {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
             BlockPos p = bh.getPos();
             if (!world.isBlockLoaded(p)) continue;
+            // Заглушённая дыра не тянет.
+            if (astrotweaks.tech.sd.DomeManager.isBlockProtected(world, p)) continue;
             double m = bh.getMass();
 
             double dx = (p.getX() + 0.5D) - x;
@@ -104,7 +110,7 @@ public final class BlackHoleGravityClientHandler {
 
             // Формула дословно серверная (stride игрока = 1.0).
             double maxAccel = Math.min(accel, dist * BlackHoleUtils.DIST_PULL_CAP_FACTOR);
-            if (maxAccel > BlackHoleUtils.MAX_ACCEL_PER_TICK) maxAccel = BlackHoleUtils.MAX_ACCEL_PER_TICK;
+            if (maxAccel > BlackHoleUtils.MAX_ACCEL) maxAccel = BlackHoleUtils.MAX_ACCEL;
 
             double nx = dx / dist, ny = dy / dist, nz = dz / dist;
             player.motionX += nx * maxAccel * BlackHoleUtils.MOTION_FACTOR;

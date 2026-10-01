@@ -118,6 +118,8 @@ public class BlackHoleEventHandler {
                 if (j == i) continue;
                 BlackHoleTileEntity b = holes.get(j);
                 if (b.isInvalid()) continue;
+                // Spatial Dome: заглушённая дыра не тянет, защищённая не отдаёт.
+                if (astrotweaks.tech.sd.DomeManager.isBlockProtected(world, a.getPos()) || astrotweaks.tech.sd.DomeManager.isBlockProtected(world, b.getPos())) continue;
                 double dx = (b.getPos().getX() + 0.5) - ax;
                 double dy = (b.getPos().getY() + 0.5) - ay;
                 double dz = (b.getPos().getZ() + 0.5) - az;

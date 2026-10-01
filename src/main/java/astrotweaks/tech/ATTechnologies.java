@@ -8,6 +8,7 @@ import astrotweaks.tech.ark.BlockArkResonator;
 import astrotweaks.tech.mt.MTGUI;
 import astrotweaks.tech.mt.BlockMoneyTable;
 import astrotweaks.tech.qts.BlockQTPSupressor;
+import astrotweaks.tech.sd.BlockSpatialDome;
 import astrotweaks.tech.tdark.BlockTDArk;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -39,6 +40,8 @@ public class ATTechnologies {
 
     public static final Block QTP_SUPRESSOR = new BlockQTPSupressor.BlockCustom().setRegistryName("qtp_supressor");
 
+    public static final Block SPATIAL_DOME = new BlockSpatialDome.BlockCustom().setRegistryName("spatial_dome");
+
     public static final Block TDARK = new BlockTDArk.BlockCustom().setRegistryName("tdark");
 
 
@@ -47,10 +50,10 @@ public class ATTechnologies {
 
     /** TDARK-блок регистрируется только при включённом мультиверсе и TDARK. */
     private static final Block[] BLOCKS_WITH_TDARK = {
-        ARK, ARK_RESONATOR, MONEY_TABLE, QTP_SUPRESSOR, TDARK
+        ARK, ARK_RESONATOR, MONEY_TABLE, QTP_SUPRESSOR, SPATIAL_DOME, TDARK
     };
     private static final Block[] BLOCKS_BASE = {
-        ARK, ARK_RESONATOR, MONEY_TABLE, QTP_SUPRESSOR
+        ARK, ARK_RESONATOR, MONEY_TABLE, QTP_SUPRESSOR, SPATIAL_DOME
     };
     public static Block[] getBlocks() {
         return (ModVariables.MULTIVERSE && ModVariables.Enable_TDARK) ? BLOCKS_WITH_TDARK : BLOCKS_BASE;
@@ -74,6 +77,7 @@ public class ATTechnologies {
         GameRegistry.registerTileEntity(BlockArk.TileEntityCustom.class, "astrotweaks:te_ark");
         GameRegistry.registerTileEntity(BlockMoneyTable.TileEntityCustom.class, "astrotweaks:te_money_table");
         GameRegistry.registerTileEntity(BlockQTPSupressor.TileEntityCustom.class, "astrotweaks:te_qtp_supressor");
+        GameRegistry.registerTileEntity(BlockSpatialDome.TileEntityCustom.class, "astrotweaks:te_spatial_dome");
         if (ModVariables.MULTIVERSE && ModVariables.Enable_TDARK) {
             GameRegistry.registerTileEntity(BlockTDArk.TileEntityCustom.class, "astrotweaks:te_tdark");
         }

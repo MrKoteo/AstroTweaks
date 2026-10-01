@@ -243,10 +243,14 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
         }
 
         // Entities: split across 2 ticks by entity-id parity.
-        tickEntities();
-
         // Blocks: budgeted, region-driven.
-        regionManager.tick();
+        // Spatial Dome silences both when the BH core itself is protected;
+        // evaporation/sync/NBT below still run.
+        boolean silenced = astrotweaks.tech.sd.DomeManager.isBlockProtected(world, pos);
+        if (!silenced) {
+            tickEntities();
+            regionManager.tick();
+        }
 
         // --- Адаптивная синхронизация: чем больше масса — тем реже пакеты, но при быстром изменении — чаще ---
         boolean massChanged = Double.doubleToLongBits(mass) != Double.doubleToLongBits(lastSyncedMass);
@@ -282,6 +286,12 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
     }
 
     private void tickEntities() {
+        // Spatial Dome: silenced source — BH inside a dome neither pulls
+        // nor eats (regionManager.tick is skipped by the caller contract;
+        // see update()). Evaporation/sync/NBT still run.
+        if (astrotweaks.tech.sd.DomeManager.isBlockProtected(world, pos)) return;
+        if (!BlackHoleUtils.isGravityEnabled()) return;
+
         int parity2 = (int)(world.getTotalWorldTime() & 1);
         int parity4 = (int)(world.getTotalWorldTime() & 3);
 
@@ -395,6 +405,11 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             // dist > gravRange уже отсечено выше (по квадрату, до корня).
             if (accel < BlackHoleUtils.MIN_ACCEL) continue;
 
+            // --- Spatial Dome: цель под куполом не тянется. Поглощение за
+            // горизонтом выше уже отработало (сингулярность бьёт и под куполом).
+            // ey — тот же anchor, что в начале цикла (центр тела / +0.25).
+            if (astrotweaks.tech.sd.DomeManager.isProtected(world, e.posX, ey, e.posZ)) continue;
+
             // --- SpatialAnchor: блокировка гравитации за FE (accel*100) ---
             if (e instanceof EntityPlayer) {
                 EntityPlayer p = (EntityPlayer) e;
@@ -433,7 +448,7 @@ public class BlackHoleTileEntity extends TileEntity implements ITickable {
             boolean suppressVelocity = inLiquid && !e.isRiding();
 
             double maxAccel = Math.min(accel, dist * BlackHoleUtils.DIST_PULL_CAP_FACTOR) * stride;
-            if (maxAccel > BlackHoleUtils.MAX_ACCEL_PER_TICK) maxAccel = BlackHoleUtils.MAX_ACCEL_PER_TICK;
+            if (maxAccel > BlackHoleUtils.MAX_ACCEL) maxAccel = BlackHoleUtils.MAX_ACCEL;
 
             double nx = dx / dist, ny = dy / dist, nz = dz / dist;
             e.motionX += nx * maxAccel * BlackHoleUtils.MOTION_FACTOR;

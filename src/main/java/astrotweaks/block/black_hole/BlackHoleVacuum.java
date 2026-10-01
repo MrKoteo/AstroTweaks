@@ -1,6 +1,5 @@
 package astrotweaks.block.black_hole;
 
-//import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
@@ -56,7 +55,7 @@ public final class BlackHoleVacuum {
     }
 
     /**
-     * Кто вообще может задохнуться. Точное условие ваниллы
+     * Разрешённые цели для удушья от вакуума.
      * ({@code !canBreatheUnderwater() && !WATER_BREATHING && !disableDamage}).
      */
     public static boolean canDrown(EntityPlayer player) {
@@ -79,6 +78,8 @@ public final class BlackHoleVacuum {
         for (BlackHoleTileEntity bh : active) {
             if (bh.isInvalid() || bh.getWorld() != world) continue;
             BlockPos p = bh.getPos();
+            // Заглушённая дыра поля не создаёт.
+            if (astrotweaks.tech.sd.DomeManager.isBlockProtected(world, p)) continue;
             double m = bh.getMass();
             double dx = (p.getX() + 0.5) - x;
             double dy = (p.getY() + 0.5) - y;
@@ -93,8 +94,7 @@ public final class BlackHoleVacuum {
             TileEntity current = world.getTileEntity(p);
             if (current != null && current != bh) continue;
 
-            double accel = BlackHoleUtils.getAccelerationSqBoosted(m, distSq,
-                    BlackHoleUtils.getHorizonRadius(m), BlackHoleUtils.getBoostRadius(m));
+            double accel = BlackHoleUtils.getAccelerationSqBoosted(m, distSq, BlackHoleUtils.getHorizonRadius(m), BlackHoleUtils.getBoostRadius(m));
             if (accel > best) {
                 best = accel;
                 if (isVacuum(best)) return best; // дальше некуда
@@ -120,6 +120,13 @@ public final class BlackHoleVacuum {
      */
     public static void tick(EntityPlayerMP player) {
         NBTTagCompound data = player.getEntityData();
+        // Spatial Dome: под куполом вакуума нет — счётчик сбрасываем как при
+        // выходе из воды. Проверка ДО accelAt: экономит цикл по всем дырам.
+        if (astrotweaks.tech.sd.DomeManager.isProtected(player.world,
+                player.posX, player.posY + player.height * 0.5D, player.posZ)) {
+            if (data.hasKey(TAG_AIR)) data.removeTag(TAG_AIR);
+            return;
+        }
         boolean inVacuum = canDrown(player) && isVacuum(accelAt(player.world, player));
 
         if (!inVacuum) {

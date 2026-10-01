@@ -99,9 +99,29 @@ public class ModVariables {
     public static double bush3gen = 1.7; // Taiga
     public static double bush4gen = 1.8; // Jungle
     public static double bush5gen = 0.9; // siren
-    public static double bush6gen = 0.5;// Plains
+    public static double bush6gen = 0.5; // Plains
     public static double bush7gen = 1.6; // Jungle
-    public static double fern1gen = 2.3;
+    public static double fern1gen = 2.3; // taiga
+
+	// Black Hole
+	public static int BH_BUDGET_PER_TICK = 2048; // макс блоков за тик
+	public static int BH_RESCAN_DELAY_TICKS = 3600; // 3 минуты, тиков
+	public static double BH_MIN_ACCEL = 0.002D;
+	public static double BH_MAX_ACCEL = 5.0D;
+	public static double BH_MAX_SPEED = 4.5D;
+	public static double BH_SUFFOCATION_ACCEL = 0.4D;
+	public static double BH_MAX_GRAVITY_RANGE = 256.0D; // блоков
+	public static double BH_MAX_BLOCK_CAPTURE_RANGE = 192.0D;
+	public static double BH_MAX_MASS = 1.0E12D;
+
+    public static double BH_MASS_PER_ITEM = 1.5D;
+    public static double BH_MASS_PER_ENTITY = 20.0D;
+    public static double BH_MASS_PER_XP = 0.5D;
+    public static double BH_MASS_PER_PLAYER = 50.0D;
+    public static double BH_MASS_PER_LIQUID = 1.0D;
+
+
+
 
 
 
@@ -120,6 +140,7 @@ public class ModVariables {
 
 	public static int QTS_Max_Range = 2048;
 
+	public static int SD_Max_Range = 128;
 
 	public static boolean NoRedFlash = true;
 

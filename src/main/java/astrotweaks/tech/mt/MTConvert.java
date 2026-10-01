@@ -30,10 +30,19 @@ public class MTConvert {
     private static List<ItemStack> COPPER_PLATE_ORES = null;
     private static final Random RAND = new Random();
 
-    private static final boolean Money_Can_Craft = ModVariables.Money_Can_Craft;
-    private static final boolean Money_Can_Conversion = ModVariables.Money_Can_Conversion;
+    private static boolean Money_Can_Craft;
+    private static boolean Money_Can_Conversion;
+    private static int ConvCount;
 
-    private static final int ConvCount = ModVariables.Money_ConvCount;
+    public static void updVars() { 
+        Money_Can_Craft = ModVariables.Money_Can_Craft;
+        Money_Can_Conversion = ModVariables.Money_Can_Conversion;
+        ConvCount = ModVariables.Money_ConvCount;
+    }
+
+
+
+    
 
     public MTConvert() {}
 

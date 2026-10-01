@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "down": "astrotweaks:blocks/spatial_dome",
+    "up": "astrotweaks:blocks/spatial_dome",
+    "north": "astrotweaks:blocks/spatial_dome",
+    "east": "astrotweaks:blocks/spatial_dome",
+    "south": "astrotweaks:blocks/spatial_dome",
+    "west": "astrotweaks:blocks/spatial_dome",
+    "particle": "astrotweaks:blocks/spatial_dome"
+  }
+}

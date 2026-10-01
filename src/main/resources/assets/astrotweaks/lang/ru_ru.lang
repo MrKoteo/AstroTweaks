@@ -55,6 +55,8 @@ qts.no_changedim=§cПеремещение между измерениями з�
 qts.tp_interrupted=§cТелепортация была прервана!
 qts.no_tp_target=§cТелепортация в целевую область невозможна!
 
+sd.change_range=Радиус купола установлен на %s блоков
+
 ark.err.coords=§cОшибка: координаты должны быть числами!
 ark.invalid_coords=§cОшибка: некорректные координаты!
 ark.err.structure=§cОшибка: Недопустимая структура!
@@ -558,6 +560,7 @@ tile.red_mushrooms.name=Красные грибы
 tile.ruby_block.name=Рубиновый блок
 tile.ruby_ore.name=Рубиновая руда
 tile.safety_zone_tape.name=Безопасная зона и первая помощь
+tile.spatial_dome.name=§dПространственный купол
 tile.sugar_block.name=Блок сахара
 tile.technical_works_tape.name=Технические работы
 tile.triple_compressed_quartz.name=Трижды сжатый кварц

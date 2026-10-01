@@ -5,6 +5,8 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
 
+import astrotweaks.ModVariables;
+
 
 
 public final class BlackHoleUtils {
@@ -27,27 +29,10 @@ public final class BlackHoleUtils {
     public static final double FAKE_HARDNESS_ROCK = 1.5D;
     public static final double FAKE_HARDNESS_WOOD = 0.6D;
 
-    public static double effectiveHardnessForCheck(Material mat, float realHardness) {
-        if (mat == Material.ROCK) {
-            // Most common case in the crater is stone-like rock: single range check.
-            // Outside the window (e.g. obsidian 50) falls through to real hardness.
-            // The else-if below is intentional: ROCK != WOOD, saves one comparison.
-            if (realHardness >= 1.5F && realHardness <= 5.0F) return FAKE_HARDNESS_ROCK;
-        } else if (mat == Material.WOOD) {
-            return FAKE_HARDNESS_WOOD;
-        }
-        return realHardness == 0.0F ? 0.1D : (double) realHardness;
-    }
-
-    /** Real hardness mapped to mass gain (zero-hardness blocks give 0.1). */
-    public static double massGainForHardness(float realHardness) {
-        return realHardness == 0.0F ? 0.1D : (double) realHardness;
-    }
-
     /** Game gravity constant tuned so mass=1000 => gravity range ~22 blocks at threshold 0.001 */
     public static final double G = 5.0e-4;
     /** Minimal displacement per tick to be applied */
-    public static final double MIN_ACCEL = 0.002D;
+    public static double MIN_ACCEL;
 
     // =================================================================
     // Применение тяги к движению сущностей (один набор на сервер и клиент,
@@ -56,9 +41,9 @@ public final class BlackHoleUtils {
     /** Доля ускорения поля, уходящая в motion за тик (все оси XYZ). */
     public static final double MOTION_FACTOR = 0.35D;
     /** Потолок прироста скорости от тяги за тик (до MOTION_FACTOR). */
-    public static final double MAX_ACCEL_PER_TICK = 5.0D;
+    public static double MAX_ACCEL;
     /** Потолок полной скорости сущности после тяги. */
-    public static final double MAX_SPEED = 4.5D;
+    public static double MAX_SPEED;
     /** Квадрат потолка скорости — клэмп без sqrt в частом случае (под потолком). */
     public static final double MAX_SPEED_SQ = MAX_SPEED * MAX_SPEED;
     /** Тяга не разгоняет быстрее, чем тело долетело бы до центра за ~2 тика. */
@@ -68,15 +53,15 @@ public final class BlackHoleUtils {
      * Порог ускорения, выше которого окрестность дыры считается вакуумом:
      * кислород заканчивается подобно как в воде
      */
-    public static final double SUFFOCATION_ACCEL = 0.4D;
+    public static double SUFFOCATION_ACCEL;
     /** Hard cap for gravity scan box (per user req) */
-    public static final double MAX_GRAVITY_RANGE = 256.0D;
+    public static double MAX_GRAVITY_RANGE;
     /** Block capture radius cap - same constant as gravity per user req (perf limited) */
-    public static final double MAX_BLOCK_CAPTURE_RANGE = 192.0D;
+    public static double MAX_BLOCK_CAPTURE_RANGE;
 
 
     // Horizon: R_h = C * mass^E ; v3: -25% base (H_SCALE*m^H_EXP): 200->0.58 ; 1000->0.82 ; 5000->1.17
-    public static final double H_SCALE = 0.021D;
+    public static final double H_SCALE = 0.02D;
     public static final double H_EXP = 0.35D;
 
     // Near-horizon boost: Rb(m) = m^{0.30103}/16 = 2*(m/1e5)^{0.30103}
@@ -85,6 +70,51 @@ public final class BlackHoleUtils {
     public static final double BOOST_INV16 = 1.0D / 16.0D;
     public static final double BOOST_MAX = 9.0D; // 10x at horizon (1+9)
     public static final double BOOST_POW = 3.0D; // cubic: flat far, sharp near horizon
+
+
+    /** Default mass for newly placed black hole */
+    public static final double DEFAULT_MASS = 20000.0D;
+    /** Hard floor for mass (evaporation and drains never go below this). */
+    public static final double MIN_MASS = 0.5D;
+    /**
+     * Hard cap for mass. Clamp, not reset: values above (e.g. huge NBT)
+     * saturate here, values below MIN_MASS saturate at the floor.
+     * Gravity range caps at 128 anyway (~32768 mass); horizon keeps growing
+     * up to ~3.6e8 mass, so this cap only bounds runaway growth.
+     */
+    public static double MAX_MASS;
+
+    /**
+     * Evaporation: mass lost per tick, inversely proportional to mass.
+     * Halves every decade: 1e4 -&gt; 32, 1e5 -&gt; 16, 1e6 -&gt; 8, ...
+     * loss(m) = EVAP_BASE / m^EVAP_EXP, EVAP_EXP = log10(2).
+     */
+    public static final double EVAP_BASE = 256.0D;
+    public static final double EVAP_EXP = 0.30103D;
+
+    /**
+     * BH-vs-BH mass tug rate. A hole of mass M drains
+     * TUG_RATE * M * (1 + grav) per tick from every other hole inside its
+     * gravity range, where grav is its own acceleration at that distance.
+     * The drained amount is credited to the drainer (conserved transfer).
+     */
+    public static final double TUG_RATE = 0.0001D;
+
+
+    /** Mass delta per absorption */
+    public static double MASS_PER_ITEM;
+    public static double MASS_PER_ENTITY;
+    public static double MASS_PER_XP;
+    public static double MASS_PER_PLAYER;
+    public static double MASS_PER_LIQUID;
+
+    // =================================================================
+    // Кислород (вакуум у дыры) — значения ванильного EntityLivingBase
+    // =================================================================
+    /** Полный запас воздуха (data-param AIR у Entity, как в ванилле). */
+    //public static final int MAX_AIR = 300;
+    /** Воздух кончился: EntityLivingBase на этом пороге делает setAir(0) + урон. */
+    public static final int DROWN_AIR = -20;
 
     /**
      * Мемоизация для частых pow — single-slot.
@@ -111,6 +141,36 @@ public final class BlackHoleUtils {
     private static volatile double lastBoostMassBits = Double.NaN;
     private static volatile double lastBoostR = 0;
 
+
+    public static void updVars() { 
+        MIN_ACCEL = ModVariables.BH_MIN_ACCEL;
+        MAX_ACCEL = ModVariables.BH_MAX_ACCEL;
+
+        MAX_SPEED = ModVariables.BH_MAX_SPEED;
+
+        SUFFOCATION_ACCEL = ModVariables.BH_SUFFOCATION_ACCEL;
+        MAX_GRAVITY_RANGE = ModVariables.BH_MAX_GRAVITY_RANGE;
+        MAX_BLOCK_CAPTURE_RANGE = ModVariables.BH_MAX_BLOCK_CAPTURE_RANGE;
+
+        MAX_MASS = ModVariables.BH_MAX_MASS;
+
+        MASS_PER_ITEM = ModVariables.BH_MASS_PER_ITEM;
+        MASS_PER_ENTITY = ModVariables.BH_MASS_PER_ENTITY;
+        MASS_PER_XP = ModVariables.BH_MASS_PER_XP;
+        MASS_PER_PLAYER = ModVariables.BH_MASS_PER_PLAYER;
+        MASS_PER_LIQUID = ModVariables.BH_MASS_PER_LIQUID;
+
+        if (MIN_ACCEL >= MAX_ACCEL) MAX_ACCEL -= 0.1D;
+
+    }
+
+    public static final boolean isGravityEnabled() { return MAX_GRAVITY_RANGE > 0; }
+    public static final boolean isBlockCaptureEnabled() {
+        return MAX_BLOCK_CAPTURE_RANGE > 0 && MAX_GRAVITY_RANGE > 0;
+    }
+
+
+
     /** Halo thickness base formula: halo = 0.25 * horizon^0.602 (1->0.25, 10->1.0) */
     public static double getHaloThickness(double horizon) {
         if (horizon <= 0) return 0.16D;
@@ -122,36 +182,22 @@ public final class BlackHoleUtils {
         lastHaloThickness = h;
         return h;
     }
-    /** Legacy constant for compat - now computed */
-    //public static final double HALO_DELTA = 0.35D;
 
-    /** Blocks per block-eat cycle (every 5 ticks). Configurable */
-    //public static int BLOCKS_PER_TICK = 16;
-    // Чёрный список сущностей (кальмар и дракон) переехал в BlackHoleTileEntity
-    // прямой проверкой instanceof: цикл с Class.isInstance на каждую сущность
-    // в кубе каждый тик стоил дороже самой проверки, а классов там всего два.
-
-    /** Default mass for newly placed black hole */
-    public static final double DEFAULT_MASS = 20000.0D;
-
-    /** Hard floor for mass (evaporation and drains never go below this). */
-    public static final double MIN_MASS = 0.5D;
-    /**
-     * Hard cap for mass. Clamp, not reset: values above (e.g. huge NBT)
-     * saturate here, values below MIN_MASS saturate at the floor.
-     * Gravity range caps at 128 anyway (~32768 mass); horizon keeps growing
-     * up to ~3.6e8 mass, so this cap only bounds runaway growth.
-     */
-    public static final double MAX_MASS = 1.0E12D;
-
-    /**
-     * Evaporation: mass lost per tick, inversely proportional to mass.
-     * Halves every decade: 1e4 -&gt; 32, 1e5 -&gt; 16, 1e6 -&gt; 8, ...
-     * loss(m) = EVAP_BASE / m^EVAP_EXP, EVAP_EXP = log10(2).
-     */
-    public static final double EVAP_BASE = 256.0D;
-    public static final double EVAP_EXP = 0.30103D;
-
+    public static double effectiveHardnessForCheck(Material mat, float realHardness) {
+        if (mat == Material.ROCK) {
+            // Most common case in the crater is stone-like rock: single range check.
+            // Outside the window (e.g. obsidian 50) falls through to real hardness.
+            // The else-if below is intentional: ROCK != WOOD, saves one comparison.
+            if (realHardness >= 1.5F && realHardness <= 5.0F) return FAKE_HARDNESS_ROCK;
+        } else if (mat == Material.WOOD) {
+            return FAKE_HARDNESS_WOOD;
+        }
+        return realHardness == 0.0F ? 0.1D : (double) realHardness;
+    }
+    /** Real hardness mapped to mass gain (zero-hardness blocks give 0.1). */
+    public static double massGainForHardness(float realHardness) {
+        return realHardness == 0.0F ? 0.1D : (double) realHardness;
+    }
     public static double getEvaporationPerTick(double mass) {
         if (mass < MIN_MASS)  return MIN_MASS; // floor or NaN: nothing to evaporate
         if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastEvapMass)) return lastEvapLoss;
@@ -162,41 +208,16 @@ public final class BlackHoleUtils {
         lastEvapLoss = ret;
         return ret;
     }
-
-    /**
-     * BH-vs-BH mass tug rate. A hole of mass M drains
-     * TUG_RATE * M * (1 + grav) per tick from every other hole inside its
-     * gravity range, where grav is its own acceleration at that distance.
-     * The drained amount is credited to the drainer (conserved transfer).
-     */
-    public static final double TUG_RATE = 0.0001D;
-
     /** Clamp any mass value into [MIN_MASS, MAX_MASS] (NaN-safe: NaN -> floor). */
     public static double clampMass(double m) {
         if (!(m >= MIN_MASS)) return MIN_MASS;
         if (m > MAX_MASS) return MAX_MASS;
         return m;
     }
-
-    /** Mass delta per absorption */
-    public static final double MASS_PER_ITEM = 1.5D;
-    public static final double MASS_PER_ENTITY = 20.0D;
-    public static final double MASS_PER_XP = 0.5D;
-    public static final double MASS_PER_PLAYER = 50.0D;
-    /** Mass gained per liquid eaten. */
-    public static final double MASS_PER_LIQUID = 1.0D;
-
-    // =================================================================
-    // Кислород (вакуум у дыры) — значения ванильного EntityLivingBase
-    // =================================================================
-    /** Полный запас воздуха (data-param AIR у Entity, как в ванилле). */
-    //public static final int MAX_AIR = 300;
-    /** Воздух кончился: EntityLivingBase на этом пороге делает setAir(0) + урон. */
-    public static final int DROWN_AIR = -20;
-
     /** Радиус вакуума (точка, где accel == SUFFOCATION_ACCEL) для массы mass. */
     public static double getVacuumRadius(double mass) {
         if (mass <= 0) return 0;
+        if (SUFFOCATION_ACCEL <= 0) return 0;
         double r = Math.sqrt(G * mass / SUFFOCATION_ACCEL);
         if (r > MAX_GRAVITY_RANGE) r = MAX_GRAVITY_RANGE;
         return r;
@@ -260,25 +281,24 @@ public final class BlackHoleUtils {
             return (int) Math.round(40 + t * (NBT_TICKS_MAX - 40));
         }
     }
-
     public static double getGravityRange(double mass) {
         if (mass <= 0) return 0;
+        if (MAX_GRAVITY_RANGE <= 0) return 0;
         double r = Math.sqrt(G * mass / MIN_ACCEL);
         if (r > MAX_GRAVITY_RANGE) r = MAX_GRAVITY_RANGE;
         return r;
     }
-
     /** Effective block capture radius - not just hardnessMin, but also capped by MAX range */
     public static double getBlockCaptureRadius(double mass) {
-        return getGravityRange(mass); // per user: same constant as gravity
+        //return getGravityRange(mass); // per user: same constant as gravity
+        return MAX_BLOCK_CAPTURE_RANGE <= 0 ? 0 : getGravityRange(mass);
     }
-
     public static double getHorizonRadius(double mass) {
         if (mass <= 0) return 0.01D;
         if (Double.doubleToLongBits(mass) == Double.doubleToLongBits(lastHorizonMassBits)) return lastHorizonR;
         double r = H_SCALE * Math.pow(mass, H_EXP);
         if (r < 0.01D) r = 0.01D;
-        if (r > 100D) r = 100D;
+        if (r > 200D) r = 200D;
         lastHorizonMassBits = mass;
         lastHorizonR = r;
         return r;
@@ -290,7 +310,6 @@ public final class BlackHoleUtils {
     public static double getVisualHorizonRadius(double mass) {
         return getHorizonRadius(mass);
     }
-
     /** Radius where accel >= hardness threshold (dynamic) */
     public static double getBlockEatRadiusByHardness(double mass, double hardness) {
         //if (mass <= 0)  return 0;
@@ -303,18 +322,15 @@ public final class BlackHoleUtils {
         if (r > MAX_GRAVITY_RANGE) r = MAX_GRAVITY_RANGE;
         return r;
     }
-
     /** Legacy alias */
     public static double getBlockEatRadius(double mass) {
         return getBlockEatRadiusByHardness(mass, 0.2D);
     }
-
     /** Acceleration per tick towards center at distance r */
     public static double getAcceleration(double mass, double dist) {
         if (dist < 0.1D) dist = 0.1D;
         return G * mass / (dist * dist);
     }
-
     /**
      * Same as getAcceleration, but takes a precomputed squared distance.
      * Saves a sqrt in scan loops that only need distSq for the horizon check.
@@ -339,12 +355,10 @@ public final class BlackHoleUtils {
         lastBoostR = r;
         return r;
     }
-
     /** Outer edge of boosted annulus. */
     public static double getBoostOuterRadius(double mass) {
         return getHorizonRadius(mass) + getBoostRadius(mass);
     }
-
     /**
      * Multiplicative boost factor at distance dist (requires horizon and Rb).
      * 1.0 outside Ro, (1+BOOST_MAX) at horizon, cubic falloff.
@@ -360,7 +374,6 @@ public final class BlackHoleUtils {
         double t3 = t2 * t; // cubic
         return 1.0D + BOOST_MAX * t3;
     }
-
     /** Boosted acceleration using precomputed dist (entity path — already has sqrt). */
     public static double getAccelerationBoosted(double mass, double dist, double horizon, double boostRadius) {
         double accel = getAcceleration(mass, dist);
@@ -371,7 +384,6 @@ public final class BlackHoleUtils {
         double t3 = t * t * t;
         return accel * (1.0D + BOOST_MAX * t3);
     }
-
     /**
      * Boosted acceleration using distSq (block path — avoids extra sqrt outside annulus).
      * Only computes sqrt when inside the boosted annulus.
@@ -404,20 +416,17 @@ public final class BlackHoleUtils {
         if (e == null || e.world == null) return false;
         if (e.isInWater()) return true;
         try {
-            IBlockState st = e.world.getBlockState(new BlockPos(
-                    e.posX, e.posY + e.height * 0.3D, e.posZ));
+            IBlockState st = e.world.getBlockState(new BlockPos(e.posX, e.posY + e.height * 0.3D, e.posZ));
             return st.getMaterial().isLiquid();
         } catch (Exception ignored) {
             return false;
         }
     }
-
     /** Mass at which the horizon reaches radius r. Inverse of getHorizonRadius. */
     public static double massForHorizon(double r) {
         if (r <= H_SCALE) return H_SCALE;
         return Math.pow(r / H_SCALE, 1.0 / H_EXP);
     }
-
     /** Horizon radius that slowly expands with mass (alternative log formula)
      *  Exposed for debug, not used by default.
      */

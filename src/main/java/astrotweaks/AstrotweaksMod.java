@@ -98,6 +98,7 @@ public class AstrotweaksMod {
 		if (ModVariables.Enable_Ground_Elements) astrotweaks.world.DecorateGroundElements.register();
 		astrotweaks.world.BlockWorldGen.register();
 
+
 		// UPDATE class vars
 		astrotweaks.block.BlockGroundRock1.updVars();
 		astrotweaks.block.BlockGroundRock2.updVars();
@@ -107,9 +108,18 @@ public class AstrotweaksMod {
 		GrassGrowth.updVars();
 		astrotweaks.world.NaturesPower.BlockMossing.updVars();
 		astrotweaks.tech.qts.BlockQTPSupressor.updVars();
+		astrotweaks.tech.sd.BlockSpatialDome.updVars();
+		astrotweaks.tech.mt.MTConvert.updVars();
+
+		astrotweaks.block.black_hole.BlackHoleRegionManager.updVars();
+		astrotweaks.block.black_hole.BlackHoleUtils.updVars();
 
 
-		GameRegistry.registerTileEntity(astrotweaks.block.mirage.MirageTileEntity.class, MODID + ":te_m");
+
+
+
+
+		
 
 
 
@@ -244,6 +254,8 @@ public class AstrotweaksMod {
 		astrotweaks.tech.ATTechnologies.registerBlocks(event);
 		astrotweaks.block.MinedBlocks.registerBlocks(event);
 		astrotweaks.Multiverse.NetherPortalReg.registerBlocks(event);
+
+		GameRegistry.registerTileEntity(astrotweaks.block.mirage.MirageTileEntity.class, MODID + ":te_m");
 	}
 
 	@SubscribeEvent
@@ -317,7 +329,7 @@ public class AstrotweaksMod {
 	//}
 
 
-	// GC не очищает неипользуемые переменные классов, поэтому чистим их вручную т.к. они больше не нужны после регистрации
+	// GC не очищает неипользуемые переменные классов и их данные, поэтому чистим их вручную т.к. они больше не нужны после регистрации
 	public static void ClearRegArrays() {
 		// Список рецептов к регистрации
 		

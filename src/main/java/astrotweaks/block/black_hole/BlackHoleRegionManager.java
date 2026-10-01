@@ -16,7 +16,7 @@ import java.util.*;
 public class BlackHoleRegionManager {
 
     /** Total block reads allowed per tick for this black hole. */
-    public static final int BUDGET_PER_TICK = 2048;
+    public static int BUDGET_PER_TICK;
 
     /**
      * Safety full-rescan delay after a mass change (5 minutes = 6000 ticks).
@@ -24,7 +24,7 @@ public class BlackHoleRegionManager {
      * request per black hole; the earliest wins, later changes are ignored
      * until it fires.
      */
-    public static final long RESCAN_DELAY_TICKS = 3600L; // 3 минуты
+    public static long RESCAN_DELAY_TICKS; // 3 минуты
     /**
      * Prompt revisit throttle: an immediate EMPTY-region recheck fires only
      * once the mass has grown by this much since the last prompt revisit...
@@ -51,6 +51,14 @@ public class BlackHoleRegionManager {
     // --- Prompt revisit state: high-water mark of mass at last prompt recheck ---
     private double massAtLastPrompt = Double.NaN;
     private long lastPromptTick = 0L;
+
+
+    public static void updVars() { 
+        BUDGET_PER_TICK = astrotweaks.ModVariables.BH_BUDGET_PER_TICK;
+        RESCAN_DELAY_TICKS = (long) astrotweaks.ModVariables.BH_RESCAN_DELAY_TICKS;
+        
+    }
+
 
     public BlackHoleRegionManager(BlackHoleTileEntity te) {
         this.te = te;
@@ -102,7 +110,7 @@ public class BlackHoleRegionManager {
     public void tick() {
         World world = te.getWorld();
         if (world == null || world.isRemote) return;
-
+        if (!BlackHoleUtils.isBlockCaptureEnabled()) return;
         if (!seeded) { seeded = true; seed(); }
 
         double mass = te.getMass();
@@ -259,11 +267,29 @@ public class BlackHoleRegionManager {
                 int bx = r.originX + lx;
                 int by = r.originY + ly;
                 int bz = r.originZ + lz;
+                // Spatial Dome pre-filter BEFORE getBlockState (the expensive call):
+                // protected blocks outside the horizon are deferred unseen.
+                // Inside horizonPlus the singularity still eats (except dome/BH
+                // blocks below), so no pre-filter there.
+                // hasDomes() keeps this at one map lookup when no domes exist.
+                boolean checkDome = astrotweaks.tech.sd.DomeManager.hasDomes(world);
+                if (checkDome) {
+                    double preDx = (bx + 0.5) - cx;
+                    double preDy = (by + 0.5) - cy;
+                    double preDz = (bz + 0.5) - cz;
+                    double preDistSq = preDx * preDx + preDy * preDy + preDz * preDz;
+                    if (preDistSq > horizonPlusSq
+                            && astrotweaks.tech.sd.DomeManager.isBlockProtected(world, bx, by, bz)) {
+                        r.addDeferred(localIdx);
+                        continue;
+                    }
+                }
                 pooled.setPos(bx, by, bz);
                 if (!world.isBlockLoaded(pooled)) continue;
 
                 IBlockState st = world.getBlockState(pooled);
-                if (st.getBlock() == Blocks.AIR || st.getBlock() instanceof BlackHoleBlock) continue;
+                if (st.getBlock() == Blocks.AIR || st.getBlock() instanceof BlackHoleBlock
+                        || st.getBlock() instanceof astrotweaks.tech.sd.BlockSpatialDome.BlockCustom) continue;
 
                 double dx = (bx + 0.5) - cx;
                 double dy = (by + 0.5) - cy;
@@ -378,6 +404,40 @@ public class BlackHoleRegionManager {
         }
     }
 
+    /**
+     * Revisit regions intersecting a changed dome (add/remove/range).
+     * Only EMPTY/WAITING need requeue: SCANNING/RECHECKING observe the dome
+     * on the fly via the per-block protection check. Bounded: only regions
+     * whose cube intersects the dome sphere are touched.
+     */
+    public void rescanAround(BlockPos center, int radius) {
+        if (center == null || radius < 0) return;
+        double dx0 = center.getX() + 0.5D;
+        double dy0 = center.getY() + 0.5D;
+        double dz0 = center.getZ() + 0.5D;
+        // Region half-diagonal (~6.93) + margin so edge regions qualify.
+        double rr = radius + 8.0D;
+        double rrSq = rr * rr;
+        int s = BlackHoleRegion.SIZE;
+        for (BlackHoleRegion r : allRegions.values()) {
+            if (r.state != BlackHoleRegion.STATE_EMPTY && r.state != BlackHoleRegion.STATE_WAITING) continue;
+            double nearX = Math.max(r.originX, Math.min(dx0, r.originX + s));
+            double nearY = Math.max(r.originY, Math.min(dy0, r.originY + s));
+            double nearZ = Math.max(r.originZ, Math.min(dz0, r.originZ + s));
+            double ndx = nearX - dx0, ndy = nearY - dy0, ndz = nearZ - dz0;
+            if (ndx * ndx + ndy * ndy + ndz * ndz > rrSq) continue;
+            if (r.state == BlackHoleRegion.STATE_WAITING) {
+                removeWaiting(r);
+                r.state = BlackHoleRegion.STATE_RECHECKING;
+                r.recheckCursor = 0;
+                addActive(r);
+            } else {
+                r.resetToScanning();
+                addActive(r);
+            }
+        }
+    }
+
     private void finishScan(BlackHoleRegion r, int idx) {
         r.freeSortedOrder();
         // Always expand the frontier — hole keeps eating farther regions even
@@ -428,11 +488,24 @@ public class BlackHoleRegionManager {
                     r.markDeferredRemoved(r.recheckCursor++);
                     continue;
                 }
+                // Dome block itself is never eaten.
+                if (st.getBlock() instanceof astrotweaks.tech.sd.BlockSpatialDome.BlockCustom) {
+                    r.markDeferredRemoved(r.recheckCursor++);
+                    continue;
+                }
 
                 double dx = (bx + 0.5) - cx;
                 double dy = (by + 0.5) - cy;
                 double dz = (bz + 0.5) - cz;
                 double bdistSq = dx * dx + dy * dy + dz * dz;
+
+                // Protected outside horizon: keep deferred, no mass, no eat.
+                // Inside horizonPlus the singularity still eats (falls through).
+                if (bdistSq > horizonPlusSq
+                        && astrotweaks.tech.sd.DomeManager.isBlockProtected(world, bx, by, bz)) {
+                    r.recheckCursor++;
+                    continue;
+                }
 
                 Material mat = st.getMaterial();
                 if (mat.isLiquid() || isVegetation(st, mat)) {

@@ -11,7 +11,6 @@ import java.util.Set;
 
 import java.io.File;
 
-import astrotweaks.AstrotweaksMod;
 
 
 public class ConfigManager {
@@ -52,6 +51,7 @@ public class ConfigManager {
 			// mods 			- изменение других модов
 			// tweaks			- различные твики и QoLF
 			// Natures Power	- То что меняет мир с течением времени, like рост травы, мха, итд.
+			// Black_Hole		- настройки чёрной дыры
 			//
 			// misc 			- Всё что не вошло в обычные категории
 			//
@@ -163,6 +163,31 @@ public class ConfigManager {
 			ModVariables.QM_is_fully_unbreakable = safeGetBoolean(config, "QM_is_fully_unbreakable", "tech", ModVariables.QM_is_fully_unbreakable, "Prohibit the player from breaking the QM_block");
 			ModVariables.QTS_Max_Range = safeGetInt(config, "QTS_Max_Range", "tech", ModVariables.QTS_Max_Range, 1, 16384, "Maximum range of Quantum TP Supressor (1-16384)");
 			ModVariables.Enable_TDARK = safeGetBoolean(config, "Enable_TDARK", "tech", ModVariables.Enable_TDARK, "Enable the TDARK + CT tech (requires MULTIVERSE) (y/n)");
+			ModVariables.SD_Max_Range = safeGetInt(config, "SD_Max_Range", "tech", ModVariables.SD_Max_Range, 1, 1024, "Maximum range of Spatial Dome (1-1024)");
+
+
+
+			//// # Black_Hole
+			ModVariables.BH_BUDGET_PER_TICK = safeGetInt(config, "BH_BUDGET_PER_TICK", "Black_Hole", ModVariables.BH_BUDGET_PER_TICK, 1, 65536, "Maximum number of blocks that can be processed per tick (1-65536)");
+			ModVariables.BH_RESCAN_DELAY_TICKS = safeGetInt(config, "BH_RESCAN_DELAY_TICKS", "Black_Hole", ModVariables.BH_RESCAN_DELAY_TICKS, 20, 1728000, "Delay before rescanning the BH area (20-1728000)");
+			
+			ModVariables.BH_MIN_ACCEL = safeGetDouble(config, "BH_MIN_ACCEL", "Black_Hole", ModVariables.BH_MIN_ACCEL, 0.0001, 10.0, "Minimum gravitational acceleration per tick (0.0001-10.0)");
+			ModVariables.BH_MAX_ACCEL = safeGetDouble(config, "BH_MAX_ACCEL", "Black_Hole", ModVariables.BH_MAX_ACCEL, 0.0002, 100.0, "Maximum gravitational acceleration per tick (0.0002-100.0)");
+			ModVariables.BH_MAX_SPEED = safeGetDouble(config, "BH_MAX_SPEED", "Black_Hole", ModVariables.BH_MAX_SPEED, 0.5, 64.0, "The maximum entity speed (blocks) per tick. (0.5-64.0)");
+			ModVariables.BH_SUFFOCATION_ACCEL = safeGetDouble(config, "BH_SUFFOCATION_ACCEL", "Black_Hole", ModVariables.BH_SUFFOCATION_ACCEL, 0.0, 100.0, "Gravitational acceleration threshold (b/t) for suffocation damage (0.0-100.0)");
+			ModVariables.BH_MAX_GRAVITY_RANGE = safeGetDouble(config, "BH_MAX_GRAVITY_RANGE", "Black_Hole", ModVariables.BH_MAX_GRAVITY_RANGE, 0.0, 16384.0, "Maximum range of the gravitational pull in blocks (1.0-16384.0)");
+			ModVariables.BH_MAX_BLOCK_CAPTURE_RANGE = safeGetDouble(config, "BH_MAX_BLOCK_CAPTURE_RANGE", "Black_Hole", ModVariables.BH_MAX_BLOCK_CAPTURE_RANGE, 0.0, 16384.0, "Maximum range at which blocks can be captured in blocks (1.0-16384.0)");
+			ModVariables.BH_MAX_MASS = safeGetDouble(config, "BH_MAX_MASS", "Black_Hole", ModVariables.BH_MAX_MASS, 1.0E3D, 1.0E18D, "Maximum mass the black hole can accumulate (1.0E3-1.0E18)");
+
+			ModVariables.BH_MASS_PER_ITEM = safeGetDouble(config, "BH_MASS_PER_ITEM", "Black_Hole", ModVariables.BH_MASS_PER_ITEM, 0.0, 1.0E6D, "Mass added per consumed item (0.0-1.0E6)");
+			ModVariables.BH_MASS_PER_ENTITY = safeGetDouble(config, "BH_MASS_PER_ENTITY", "Black_Hole", ModVariables.BH_MASS_PER_ENTITY, 0.0, 1.0E6D, "Mass added per consumed entity (0.0-1.0E6)");
+			ModVariables.BH_MASS_PER_XP = safeGetDouble(config, "BH_MASS_PER_XP", "Black_Hole", ModVariables.BH_MASS_PER_XP, 0.0, 1.0E6D, "Mass added per consumed XP orb (0.0-1.0E6)");
+			ModVariables.BH_MASS_PER_PLAYER = safeGetDouble(config, "BH_MASS_PER_PLAYER", "Black_Hole", ModVariables.BH_MASS_PER_PLAYER, 0.0, 1.0E6D, "Mass added per consumed player (0.0-1.0E6)");
+			ModVariables.BH_MASS_PER_LIQUID = safeGetDouble(config, "BH_MASS_PER_LIQUID", "Black_Hole", ModVariables.BH_MASS_PER_LIQUID, 0.0, 1.0E6D, "Mass added per consumed liquid block (0.0-1.0E6)");
+
+
+
+
 
 
 
